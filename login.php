@@ -9,21 +9,26 @@ $adminQuery = $pdo->prepare("SELECT username, password FROM admin ORDER BY usern
 $adminQuery->execute();
 $admins = $adminQuery->fetchAll(PDO::FETCH_ASSOC);
 
-/* Only fetch APPROVED instructors for login check */
-$instructorQuery = $pdo->prepare("SELECT username, password, status, rejection_reason FROM instructor WHERE status = 'approved' ORDER BY username");
+$instructorQuery = $pdo->prepare("SELECT username, password FROM instructor ORDER BY username");
 $instructorQuery->execute();
 $instructors = $instructorQuery->fetchAll(PDO::FETCH_ASSOC);
 
-/* Only fetch APPROVED students for role availability check */
-$studentQueryAll = $pdo->query("SELECT school_id FROM students WHERE status = 'approved'");
+$studentQueryAll = $pdo->query("SELECT school_id FROM students");
 $students = $studentQueryAll->fetchAll(PDO::FETCH_ASSOC);
 
 /* Role availability */
 $roleExists = [
-    'ADMIN' => !empty($admins),
+    'ADMIN'      => !empty($admins),
     'INSTRUCTOR' => !empty($instructors),
-    'STUDENT' => !empty($students)
+    'STUDENT'    => !empty($students)
 ];
+
+/* Helper: check if status column already exists (migration may not be run yet) */
+function columnExists($pdo, $table, $col) {
+    try { $pdo->query("SELECT $col FROM $table LIMIT 0"); return true; }
+    catch (Exception $e) { return false; }
+}
+$hasStatus = columnExists($pdo, 'instructor', 'status');
 
 /* ------------------------------
    HANDLE LOGIN
@@ -78,8 +83,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $oldValues['instructor_username'] = $username;
         $oldValues['instructor_password'] = $password;
 
-        /* Check ALL instructors (any status) for proper error messages */
-        $stmtAny = $pdo->prepare("SELECT username, password, status, rejection_reason FROM instructor WHERE username = ?");
+        $cols = $hasStatus ? "username, password, status, rejection_reason" : "username, password";
+        $stmtAny = $pdo->prepare("SELECT $cols FROM instructor WHERE username = ?");
         $stmtAny->execute([$username]);
         $instructorUser = $stmtAny->fetch(PDO::FETCH_ASSOC);
 
@@ -87,9 +92,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $loginError = "Instructor username is incorrect.";
         } elseif (!password_verify($password, $instructorUser['password'])) {
             $loginError = "Instructor password is incorrect.";
-        } elseif ($instructorUser['status'] === 'pending') {
+        } elseif ($hasStatus && ($instructorUser['status'] ?? 'approved') === 'pending') {
             $loginError = "Your account is still <strong>pending approval</strong>. Please wait for the Admin to approve your registration.";
-        } elseif ($instructorUser['status'] === 'rejected') {
+        } elseif ($hasStatus && ($instructorUser['status'] ?? 'approved') === 'rejected') {
             $reason = htmlspecialchars($instructorUser['rejection_reason'] ?? 'No reason provided.');
             $loginError = "Your account has been <strong>rejected</strong>. Reason: <em>$reason</em>";
         } else {
@@ -108,8 +113,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $oldValues['school_id'] = $schoolId;
         $oldValues['student_password'] = $password;
 
-        /* Check ALL students (any status) for proper error messages */
-        $studentQuery = $pdo->prepare("SELECT password, status, rejection_reason FROM students WHERE school_id = ?");
+        $scols = $hasStatus ? "password, status, rejection_reason" : "password";
+        $studentQuery = $pdo->prepare("SELECT $scols FROM students WHERE school_id = ?");
         $studentQuery->execute([$schoolId]);
         $student = $studentQuery->fetch(PDO::FETCH_ASSOC);
 
@@ -117,9 +122,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $loginError = "School ID is incorrect.";
         } elseif (!password_verify($password, $student['password'])) {
             $loginError = "Password is incorrect.";
-        } elseif ($student['status'] === 'pending') {
+        } elseif ($hasStatus && ($student['status'] ?? 'approved') === 'pending') {
             $loginError = "Your account is still <strong>pending approval</strong>. Please wait for the Admin to approve your registration.";
-        } elseif ($student['status'] === 'rejected') {
+        } elseif ($hasStatus && ($student['status'] ?? 'approved') === 'rejected') {
             $reason = htmlspecialchars($student['rejection_reason'] ?? 'No reason provided.');
             $loginError = "Your account has been <strong>rejected</strong>. Reason: <em>$reason</em>";
         } else {
