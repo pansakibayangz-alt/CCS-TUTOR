@@ -1,13 +1,20 @@
 <?php
+session_start(); // FIX: session_start() sa simula ng file
 require_once 'functions.php';
 require_once 'db.php';
 
-$success = '';
-$error   = '';
-$role    = $_POST['role'] ?? '';
+$error = '';
+$role  = '';
+
+// FIX: POST-Redirect-GET pattern — ipakita ang success via GET param
+if (isset($_GET['success'])) {
+    $successRole = htmlspecialchars($_GET['success']);
+} else {
+    $successRole = '';
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $role = trim($_POST['role'] ?? '');
+    $role = trim($_POST['role'] ?? ''); // FIX: Tanggal ang redundant na line 7, ito na lang ang ginagamit
 
     /* ── INSTRUCTOR REGISTRATION ── */
     if ($role === 'INSTRUCTOR') {
@@ -19,22 +26,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $password    = $_POST['password']                ?? '';
         $confirm     = $_POST['confirm_password']        ?? '';
 
+        // FIX: Username format validation
         if (!$firstname || !$surname || !$username || !$password) {
             $error = "Please fill in all required fields.";
+        } elseif (!preg_match('/^[a-zA-Z0-9_]{3,30}$/', $username)) {
+            $error = "Username must be 3–30 characters (letters, numbers, underscore only).";
         } elseif (strlen($password) < 6) {
             $error = "Password must be at least 6 characters.";
         } elseif ($password !== $confirm) {
             $error = "Passwords do not match.";
         } else {
-            /* duplicate check */
             $chk = $pdo->prepare("SELECT instructor_id FROM instructor WHERE username = ?");
             $chk->execute([$username]);
             if ($chk->rowCount() > 0) {
-                $error = "Username '$username' is already taken.";
+                // FIX: htmlspecialchars() sa $username sa loob ng error message (XSS fix)
+                $error = "Username '" . htmlspecialchars($username) . "' is already taken.";
             } else {
-                $hash = password_hash($password, PASSWORD_DEFAULT);
-                
-                // ADDED: Generate a secure unique key for the database column
+                $hash       = password_hash($password, PASSWORD_DEFAULT);
                 $unique_key = bin2hex(random_bytes(16));
 
                 $stmt = $pdo->prepare("
@@ -43,7 +51,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     VALUES (?, ?, ?, ?, ?, ?, 'pending', NOW(), ?)
                 ");
                 $stmt->execute([$firstname, $middlename, $surname, $degree, $username, $hash, $unique_key]);
-                $success = "INSTRUCTOR";
+
+                // FIX: Post-Redirect-GET — redirect after success para maiwasan ang double submit on refresh
+                header("Location: register.php?success=INSTRUCTOR");
+                exit;
             }
         }
 
@@ -56,12 +67,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $phone_number = trim($_POST['phone_number']   ?? '');
         $facebook     = trim($_POST['facebook_name']  ?? '');
         $year_level   = trim($_POST['s_year_level']   ?? '');
-        $block        = trim($_POST['s_block']         ?? '');
-        $password     = $_POST['password']             ?? '';
-        $confirm      = $_POST['confirm_password']     ?? '';
+        $block        = trim($_POST['s_block']        ?? '');
+        $password     = $_POST['password']            ?? '';
+        $confirm      = $_POST['confirm_password']    ?? '';
 
         if (!$firstname || !$surname || !$school_id || !$year_level || !$block || !$password) {
             $error = "Please fill in all required fields.";
+        // FIX: School ID format validation
+        } elseif (!preg_match('/^\d{4}-\d{5}$/', $school_id)) {
+            $error = "School ID must follow the format: YYYY-NNNNN (e.g. 2024-00001).";
+        // FIX: Phone number format validation (optional field pero kung may laman, dapat valid)
+        } elseif ($phone_number && !preg_match('/^09\d{9}$/', $phone_number)) {
+            $error = "Contact number must be in the format: 09XXXXXXXXX (11 digits).";
         } elseif (strlen($password) < 6) {
             $error = "Password must be at least 6 characters.";
         } elseif ($password !== $confirm) {
@@ -70,11 +87,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $chk = $pdo->prepare("SELECT student_id FROM students WHERE school_id = ?");
             $chk->execute([$school_id]);
             if ($chk->rowCount() > 0) {
-                $error = "School ID '$school_id' is already registered.";
+                // FIX: htmlspecialchars() sa $school_id sa loob ng error message (XSS fix)
+                $error = "School ID '" . htmlspecialchars($school_id) . "' is already registered.";
             } else {
-                $hash = password_hash($password, PASSWORD_DEFAULT);
-                
-                // ADDED: Generate a secure unique key for the database column
+                $hash       = password_hash($password, PASSWORD_DEFAULT);
                 $unique_key = bin2hex(random_bytes(16));
 
                 $stmt = $pdo->prepare("
@@ -87,7 +103,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $firstname, $middlename, $surname, $school_id,
                     $phone_number, $facebook, $year_level, $block, $hash, $unique_key
                 ]);
-                $success = "STUDENT";
+
+                // FIX: Post-Redirect-GET — redirect after success
+                header("Location: register.php?success=STUDENT");
+                exit;
             }
         }
 
@@ -121,7 +140,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         top: 0;
         left: 0;
         height: 100vh;
-        width: 41.666667%; /* matches col-lg-5 */
+        width: 41.666667%;
         z-index: 10;
     }
     .brand-panel::before {
@@ -144,7 +163,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         align-items: center;
         background-color: #ffffff;
     }
-    
+
     /* Inputs & UI Elements */
     .form-control, .form-select {
         height: 54px;
@@ -238,6 +257,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     .success-box .bi { font-size: 72px; color: #22c55e; margin-bottom: 15px; display:block; }
 
+    /* FIX: Password match indicator styles */
+    .pw-match-msg {
+        font-size: 0.78rem;
+        margin-top: 4px;
+        min-height: 18px;
+    }
+
     /* Animations */
     .dynamic-fields { display: none; }
     .dynamic-fields.active {
@@ -277,12 +303,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <h2 class="brand-title fw-bold text-dark mb-0">CS Tutoring Hub</h2>
                 </div>
 
-                <?php if ($success): ?>
+                <?php if ($successRole): ?>
                     <div class="success-box">
                         <i class="bi bi-check-circle-fill shadow-sm rounded-circle d-inline-block bg-white text-success"></i>
                         <h2 class="fw-bold text-dark mb-3">Registration Successful!</h2>
                         <p class="text-muted fs-5 mb-4">
-                            Your <strong><?= $success === 'INSTRUCTOR' ? 'Instructor' : 'Student' ?></strong> account has been created and is currently <strong>pending approval</strong>.
+                            Your <strong><?= $successRole === 'INSTRUCTOR' ? 'Instructor' : 'Student' ?></strong> account has been created and is currently <strong>pending approval</strong>.
                         </p>
                         <p class="text-muted mb-5">An administrator will review your details shortly. You will be able to log in once approved.</p>
                         <a href="login.php" class="btn btn-register w-100 d-flex align-items-center justify-content-center text-decoration-none">
@@ -291,15 +317,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                 <?php else: ?>
 
-                    <div class="mb-5">
-                        <h1 class="fw-bold text-dark mb-2" style="letter-spacing: -1px;">Create Account</h1>
-                        <p class="text-secondary fs-6">Please fill in your information to get started.</p>
+                    <div class="mb-4">
+                        <h1 class="fw-bold text-dark mb-1" style="letter-spacing: -1px;">Create Account</h1>
+                        <p class="text-secondary fs-6 mb-0">Please fill in your information to get started.</p>
+                        <!-- FIX: Required fields legend -->
+                        <p class="text-secondary" style="font-size: 0.8rem;"><span class="text-danger">*</span> Required fields</p>
                     </div>
 
                     <?php if ($error): ?>
                         <div class="alert alert-danger rounded-3 border-0 shadow-sm d-flex align-items-center p-3 mb-4">
                             <i class="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
-                            <div><?= htmlspecialchars($error) ?></div>
+                            <!-- FIX: Error message na naka-htmlspecialchars na sa PHP side na, safe na ito -->
+                            <div><?= $error ?></div>
                         </div>
                     <?php endif; ?>
 
@@ -317,6 +346,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </div>
                         </div>
 
+                        <!-- INSTRUCTOR FIELDS -->
                         <div id="instructorFields" class="dynamic-fields">
                             <div class="section-divider">Personal Details</div>
                             
@@ -338,14 +368,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </div>
                             <div class="row g-3 mb-4">
                                 <div class="col-md-6">
-                                    <label class="form-label">Middle Name</label>
+                                    <label class="form-label">Middle Name <span class="text-muted fw-normal">(Optional)</span></label>
                                     <div class="position-relative">
                                         <input type="text" name="middlename" class="form-control" value="<?= htmlspecialchars($_POST['middlename'] ?? '') ?>" placeholder="(Optional)">
                                         <i class="bi bi-person input-icon"></i>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label">Degree / Designation</label>
+                                    <label class="form-label">Degree / Designation <span class="text-muted fw-normal">(Optional)</span></label>
                                     <div class="position-relative">
                                         <input type="text" name="degree_designation" class="form-control" value="<?= htmlspecialchars($_POST['degree_designation'] ?? '') ?>" placeholder="e.g. MIT, Ph.D">
                                         <i class="bi bi-award input-icon"></i>
@@ -358,11 +388,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <div class="mb-3">
                                 <label class="form-label">Username <span class="text-danger">*</span></label>
                                 <div class="position-relative">
-                                    <input type="text" name="username" class="form-control" value="<?= htmlspecialchars($_POST['username'] ?? '') ?>" placeholder="Choose a unique username">
+                                    <input type="text" name="username" id="username_i" class="form-control" value="<?= htmlspecialchars($_POST['username'] ?? '') ?>" placeholder="3–30 characters, letters/numbers/_">
                                     <i class="bi bi-at input-icon"></i>
                                 </div>
+                                <!-- FIX: Live username hint -->
+                                <div id="username_hint" class="pw-match-msg text-muted"></div>
                             </div>
-                            <div class="row g-3 mb-5">
+                            <div class="row g-3 mb-3">
                                 <div class="col-md-6">
                                     <label class="form-label">Password <span class="text-danger">*</span></label>
                                     <div class="position-relative">
@@ -378,8 +410,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     </div>
                                 </div>
                             </div>
+                            <!-- FIX: Live password match indicator -->
+                            <div id="pw_match_i" class="pw-match-msg mb-4"></div>
                         </div>
 
+                        <!-- STUDENT FIELDS -->
                         <div id="studentFields" class="dynamic-fields">
                             <div class="section-divider">Personal Details</div>
 
@@ -401,16 +436,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </div>
                             <div class="row g-3 mb-4">
                                 <div class="col-md-6">
-                                    <label class="form-label">Middle Name</label>
+                                    <label class="form-label">Middle Name <span class="text-muted fw-normal">(Optional)</span></label>
                                     <div class="position-relative">
                                         <input type="text" name="s_middlename" class="form-control" value="<?= htmlspecialchars($_POST['s_middlename'] ?? '') ?>" placeholder="(Optional)">
                                         <i class="bi bi-person input-icon"></i>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label">Contact No.</label>
+                                    <label class="form-label">Contact No. <span class="text-muted fw-normal">(Optional)</span></label>
                                     <div class="position-relative">
-                                        <input type="text" name="phone_number" class="form-control" value="<?= htmlspecialchars($_POST['phone_number'] ?? '') ?>" placeholder="09xxxxxxxxx">
+                                        <input type="text" name="phone_number" class="form-control" value="<?= htmlspecialchars($_POST['phone_number'] ?? '') ?>" placeholder="09XXXXXXXXX">
                                         <i class="bi bi-telephone input-icon"></i>
                                     </div>
                                 </div>
@@ -459,13 +494,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <div class="section-divider">Account Security</div>
 
                             <div class="mb-3">
-                                <label class="form-label">Facebook Profile Name</label>
+                                <label class="form-label">Facebook Profile Name <span class="text-muted fw-normal">(Optional)</span></label>
                                 <div class="position-relative">
                                     <input type="text" name="facebook_name" class="form-control" value="<?= htmlspecialchars($_POST['facebook_name'] ?? '') ?>" placeholder="For communication (Optional)">
                                     <i class="bi bi-facebook input-icon"></i>
                                 </div>
                             </div>
-                            <div class="row g-3 mb-5">
+                            <div class="row g-3 mb-3">
                                 <div class="col-md-6">
                                     <label class="form-label">Password <span class="text-danger">*</span></label>
                                     <div class="position-relative">
@@ -481,6 +516,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     </div>
                                 </div>
                             </div>
+                            <!-- FIX: Live password match indicator for student -->
+                            <div id="pw_match_s" class="pw-match-msg mb-4"></div>
                         </div>
 
                         <button type="submit" class="btn btn-register w-100 mb-4" id="submitBtn" disabled>
@@ -510,17 +547,46 @@ const form             = document.getElementById('regForm');
 
 function toggleFields() {
     const v = roleSelect.value;
-    
-    // Remove active class for animation resets
     instructorFields.classList.remove('active');
     studentFields.classList.remove('active');
-
-    if (v === 'INSTRUCTOR') {
-        instructorFields.classList.add('active');
-    } else if (v === 'STUDENT') {
-        studentFields.classList.add('active');
-    }
+    if (v === 'INSTRUCTOR') instructorFields.classList.add('active');
+    else if (v === 'STUDENT') studentFields.classList.add('active');
     validate();
+}
+
+// FIX: Live password match indicator
+function checkPasswordMatch(pwId, cpwId, msgId) {
+    const pw  = document.getElementById(pwId);
+    const cpw = document.getElementById(cpwId);
+    const msg = document.getElementById(msgId);
+    if (!pw || !cpw || !msg) return;
+    if (cpw.value === '') {
+        msg.textContent = '';
+        return;
+    }
+    if (pw.value === cpw.value) {
+        msg.textContent = '✓ Passwords match';
+        msg.className = 'pw-match-msg text-success';
+    } else {
+        msg.textContent = '✗ Passwords do not match';
+        msg.className = 'pw-match-msg text-danger';
+    }
+}
+
+// FIX: Live username format hint
+function checkUsernameFormat() {
+    const el   = document.getElementById('username_i');
+    const hint = document.getElementById('username_hint');
+    if (!el || !hint) return;
+    const val = el.value;
+    if (val === '') { hint.textContent = ''; return; }
+    if (/^[a-zA-Z0-9_]{3,30}$/.test(val)) {
+        hint.textContent = '✓ Valid username';
+        hint.className = 'pw-match-msg text-success';
+    } else {
+        hint.textContent = '3–30 characters: letters, numbers, underscore only';
+        hint.className = 'pw-match-msg text-danger';
+    }
 }
 
 function validate() {
@@ -533,7 +599,10 @@ function validate() {
         const un = form.querySelector('input[name="username"]').value.trim();
         const pw = document.getElementById('pw_i').value;
         const cp = document.getElementById('cpw_i').value;
-        ok = fn && sn && un && pw.length >= 6 && pw === cp;
+        // FIX: username format check included in frontend validate
+        ok = fn && sn && /^[a-zA-Z0-9_]{3,30}$/.test(un) && pw.length >= 6 && pw === cp;
+        checkPasswordMatch('pw_i', 'cpw_i', 'pw_match_i');
+        checkUsernameFormat();
     } else if (v === 'STUDENT') {
         const fn  = form.querySelector('input[name="s_firstname"]').value.trim();
         const sn  = form.querySelector('input[name="s_surname"]').value.trim();
@@ -543,6 +612,7 @@ function validate() {
         const pw  = document.getElementById('pw_s').value;
         const cp  = document.getElementById('cpw_s').value;
         ok = fn && sn && sid && yl && bl && pw.length >= 6 && pw === cp;
+        checkPasswordMatch('pw_s', 'cpw_s', 'pw_match_s');
     }
 
     submitBtn.disabled = !ok;
@@ -552,7 +622,6 @@ roleSelect.addEventListener('change', toggleFields);
 form && form.addEventListener('input', validate);
 toggleFields();
 
-// Pre-select role if PHP sent back a value
 if (roleSelect.value !== '') {
     roleSelect.dispatchEvent(new Event('change'));
 }
