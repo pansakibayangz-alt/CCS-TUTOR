@@ -33,12 +33,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = "Username '$username' is already taken.";
             } else {
                 $hash = password_hash($password, PASSWORD_DEFAULT);
+                
+                // ADDED: Generate a secure unique key for the instructor
+                $unique_key = bin2hex(random_bytes(16));
+                
                 $stmt = $pdo->prepare("
                     INSERT INTO instructor
-                        (firstname, middlename, surname, degree_designation, username, password, status, registered_at)
-                    VALUES (?, ?, ?, ?, ?, ?, 'pending', NOW())
+                        (firstname, middlename, surname, degree_designation, username, password, status, registered_at, unique_key)
+                    VALUES (?, ?, ?, ?, ?, ?, 'pending', NOW(), ?)
                 ");
-                $stmt->execute([$firstname, $middlename, $surname, $degree, $username, $hash]);
+                $stmt->execute([$firstname, $middlename, $surname, $degree, $username, $hash, $unique_key]);
                 $success = "INSTRUCTOR";
             }
         }
@@ -70,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 $hash = password_hash($password, PASSWORD_DEFAULT);
                 
-                // Generate a secure unique key for the database column
+                // ADDED: Generate a secure unique key for the student
                 $unique_key = bin2hex(random_bytes(16));
                 
                 $stmt = $pdo->prepare("
