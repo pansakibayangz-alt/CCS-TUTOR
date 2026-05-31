@@ -13,8 +13,8 @@ if (isset($_GET['success'])) {
     $successRole = '';
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $role = trim($_POST['role'] ?? ''); // FIX: Tanggal ang redundant na line 7, ito na lang ang ginagamit
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['role'])) {
+    $role = trim($_POST['role'] ?? '');
 
     /* ── INSTRUCTOR REGISTRATION ── */
     if ($role === 'INSTRUCTOR') {
@@ -556,6 +556,17 @@ if (form && roleSelect && submitBtn) {
         studentFields.classList.remove('active');
         if (v === 'INSTRUCTOR') instructorFields.classList.add('active');
         else if (v === 'STUDENT') studentFields.classList.add('active');
+
+        // BUG FIX: I-disable ang inputs ng hindi active na section
+        // para hindi masama sa POST data ang maling fields,
+        // at para hindi maging empty ang required fields ng active section.
+        instructorFields.querySelectorAll('input, select').forEach(el => {
+            el.disabled = (v !== 'INSTRUCTOR');
+        });
+        studentFields.querySelectorAll('input, select').forEach(el => {
+            el.disabled = (v !== 'STUDENT');
+        });
+
         validate();
     }
 
