@@ -1,26 +1,18 @@
 <?php
+// FIX: session_start() sa pinaka-unang linya ng file — bago ang lahat ng output at logic
+session_start();
 require_once 'functions.php';
 require_once 'db.php';
 
 /* ------------------------------
-   FETCH ADMINS & INSTRUCTORS
+   FETCH ROLE AVAILABILITY ONLY
+   FIX: Hindi na kino-load ang lahat ng passwords sa memory.
+        Ginagamit na lang COUNT para malaman kung may existing records.
 --------------------------------*/
-$adminQuery = $pdo->prepare("SELECT username, password FROM admin ORDER BY username");
-$adminQuery->execute();
-$admins = $adminQuery->fetchAll(PDO::FETCH_ASSOC);
-
-$instructorQuery = $pdo->prepare("SELECT username, password FROM instructor ORDER BY username");
-$instructorQuery->execute();
-$instructors = $instructorQuery->fetchAll(PDO::FETCH_ASSOC);
-
-$studentQueryAll = $pdo->query("SELECT school_id FROM students");
-$students = $studentQueryAll->fetchAll(PDO::FETCH_ASSOC);
-
-/* Role availability */
 $roleExists = [
-    'ADMIN'      => !empty($admins),
-    'INSTRUCTOR' => !empty($instructors),
-    'STUDENT'    => !empty($students)
+    'ADMIN'      => (bool) $pdo->query("SELECT COUNT(*) FROM admin")->fetchColumn(),
+    'INSTRUCTOR' => (bool) $pdo->query("SELECT COUNT(*) FROM instructor")->fetchColumn(),
+    'STUDENT'    => (bool) $pdo->query("SELECT COUNT(*) FROM students")->fetchColumn(),
 ];
 
 /* Helper: check if status column already exists (migration may not be run yet) */
@@ -35,41 +27,35 @@ $hasStatus = columnExists($pdo, 'instructor', 'status');
 --------------------------------*/
 $loginError = '';
 $oldValues = [
-    'role'=>'', 
-    'admin_username'=>'', 
-    'instructor_username'=>'', 
-    'school_id'=>'', 
-    'admin_password'=>'', 
-    'instructor_password'=>'', 
-    'student_password'=>''
+    'role'                 => '',
+    'admin_username'       => '',
+    'instructor_username'  => '',
+    'school_id'            => '',
 ];
+// FIX: Passwords ay HINDI na naka-store sa $oldValues para hindi ma-refill sa form
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $role = $_POST['role'] ?? '';
+    $role = trim($_POST['role'] ?? '');
     $oldValues['role'] = $role;
 
     /* ADMIN */
     if ($role === 'ADMIN' && $roleExists['ADMIN']) {
         $username = trim($_POST['admin_username'] ?? '');
-        $password = trim($_POST['admin_password'] ?? '');
+        $password = $_POST['admin_password'] ?? ''; // FIX: walang trim sa password
         $oldValues['admin_username'] = $username;
-        $oldValues['admin_password'] = $password;
+        // FIX: password ay hindi naka-store sa oldValues
 
-        $adminUser = null;
-        foreach ($admins as $a) {
-            if ($a['username'] === $username) {
-                $adminUser = $a;
-                break;
-            }
-        }
+        // FIX: Direktang WHERE query — hindi na kino-load ang lahat ng admins sa memory
+        $stmt = $pdo->prepare("SELECT username, password FROM admin WHERE username = ? LIMIT 1");
+        $stmt->execute([$username]);
+        $adminUser = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$adminUser) {
             $loginError = "Admin username is incorrect.";
         } elseif (!password_verify($password, $adminUser['password'])) {
             $loginError = "Admin password is incorrect.";
         } else {
-            session_start();
-            $_SESSION['role'] = 'ADMIN';
+            $_SESSION['role']     = 'ADMIN';
             $_SESSION['username'] = $username;
             header("Location: admin_dashboard.php");
             exit;
@@ -79,12 +65,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     /* INSTRUCTOR */
     elseif ($role === 'INSTRUCTOR') {
         $username = trim($_POST['instructor_username'] ?? '');
-        $password = trim($_POST['instructor_password'] ?? '');
+        $password = $_POST['instructor_password'] ?? ''; // FIX: walang trim sa password
         $oldValues['instructor_username'] = $username;
-        $oldValues['instructor_password'] = $password;
+        // FIX: password ay hindi naka-store sa oldValues
 
-        $cols = $hasStatus ? "username, password, status, rejection_reason" : "username, password";
-        $stmtAny = $pdo->prepare("SELECT $cols FROM instructor WHERE username = ?");
+        $cols    = $hasStatus ? "username, password, status, rejection_reason" : "username, password";
+        $stmtAny = $pdo->prepare("SELECT $cols FROM instructor WHERE username = ? LIMIT 1");
         $stmtAny->execute([$username]);
         $instructorUser = $stmtAny->fetch(PDO::FETCH_ASSOC);
 
@@ -95,11 +81,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($hasStatus && ($instructorUser['status'] ?? 'approved') === 'pending') {
             $loginError = "Your account is still <strong>pending approval</strong>. Please wait for the Admin to approve your registration.";
         } elseif ($hasStatus && ($instructorUser['status'] ?? 'approved') === 'rejected') {
+            // FIX: rejection_reason ay naka-htmlspecialchars na — safe
             $reason = htmlspecialchars($instructorUser['rejection_reason'] ?? 'No reason provided.');
             $loginError = "Your account has been <strong>rejected</strong>. Reason: <em>$reason</em>";
         } else {
-            session_start();
-            $_SESSION['role'] = 'INSTRUCTOR';
+            $_SESSION['role']     = 'INSTRUCTOR';
             $_SESSION['username'] = $username;
             header("Location: instructor_dashboard.php");
             exit;
@@ -109,12 +95,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     /* STUDENT */
     elseif ($role === 'STUDENT') {
         $schoolId = trim($_POST['school_id'] ?? '');
-        $password = trim($_POST['student_password'] ?? '');
+        $password = $_POST['student_password'] ?? ''; // FIX: walang trim sa password
         $oldValues['school_id'] = $schoolId;
-        $oldValues['student_password'] = $password;
+        // FIX: password ay hindi naka-store sa oldValues
 
-        $scols = $hasStatus ? "password, status, rejection_reason" : "password";
-        $studentQuery = $pdo->prepare("SELECT $scols FROM students WHERE school_id = ?");
+        $scols       = $hasStatus ? "student_id, password, status, rejection_reason" : "student_id, password";
+        $studentQuery = $pdo->prepare("SELECT $scols FROM students WHERE school_id = ? LIMIT 1");
         $studentQuery->execute([$schoolId]);
         $student = $studentQuery->fetch(PDO::FETCH_ASSOC);
 
@@ -128,14 +114,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $reason = htmlspecialchars($student['rejection_reason'] ?? 'No reason provided.');
             $loginError = "Your account has been <strong>rejected</strong>. Reason: <em>$reason</em>";
         } else {
-            session_start();
-            $_SESSION['role'] = 'STUDENT';
+            $_SESSION['role']     = 'STUDENT';
             $_SESSION['school_id'] = $schoolId;
 
-            $stmtLogin = $pdo->prepare("INSERT INTO student_logins (student_id) VALUES (?)");
-            $stmtLogin->execute([$schoolId]);
-
-            $_SESSION['login_id'] = $pdo->lastInsertId();
+            // FIX: Wrapped sa try-catch para hindi mag-crash kung may DB error
+            try {
+                // FIX: Ginagamit na ang actual student_id (hindi school_id) para sa student_logins
+                $stmtLogin = $pdo->prepare("INSERT INTO student_logins (student_id) VALUES (?)");
+                $stmtLogin->execute([$student['student_id']]);
+                $_SESSION['login_id'] = $pdo->lastInsertId();
+            } catch (Exception $e) {
+                // Hindi mag-block ng login kahit mag-fail ang log insert — log lang ang error
+                error_log("student_logins insert failed: " . $e->getMessage());
+            }
 
             header("Location: student_dashboard.php");
             exit;
@@ -270,9 +261,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <p class="text-muted">Please enter your details to sign in to your account.</p>
                 </div>
 
-                <?php if($loginError): ?>
+                <?php if ($loginError): ?>
                     <div class="alert alert-danger rounded-3 border-0 shadow-sm d-flex align-items-center mb-4">
                         <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        <!-- FIX: $loginError ay may controlled HTML lang (strong/em) — safe ang pag-echo nito
+                             dahil lahat ng user input sa loob nito ay naka-htmlspecialchars na sa PHP logic -->
                         <div><?= $loginError ?></div>
                     </div>
                 <?php endif; ?>
@@ -285,9 +278,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <i class="bi bi-person-badge input-icon"></i>
                             <select name="role" id="role" class="form-select">
                                 <option value="">-- Choose your role --</option>
-                                <option value="ADMIN" <?= $oldValues['role']=='ADMIN'?'selected':'' ?>>Administrator</option>
-                                <option value="INSTRUCTOR" <?= $oldValues['role']=='INSTRUCTOR'?'selected':'' ?>>Instructor</option>
-                                <option value="STUDENT" <?= $oldValues['role']=='STUDENT'?'selected':'' ?>>Student</option>
+                                <option value="ADMIN"      <?= $oldValues['role']==='ADMIN'      ?'selected':'' ?>>Administrator</option>
+                                <option value="INSTRUCTOR" <?= $oldValues['role']==='INSTRUCTOR' ?'selected':'' ?>>Instructor</option>
+                                <option value="STUDENT"    <?= $oldValues['role']==='STUDENT'    ?'selected':'' ?>>Student</option>
                             </select>
                         </div>
                     </div>
@@ -297,14 +290,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <label class="form-label fw-semibold text-dark small">Admin Username</label>
                             <div class="position-relative">
                                 <i class="bi bi-person input-icon"></i>
-                                <input type="text" name="admin_username" class="form-control" placeholder="Enter username" value="<?= htmlspecialchars($oldValues['admin_username']) ?>">
+                                <input type="text" name="admin_username" class="form-control" placeholder="Enter username"
+                                       value="<?= htmlspecialchars($oldValues['admin_username']) ?>">
                             </div>
                         </div>
                         <div class="mb-4 position-relative">
                             <label class="form-label fw-semibold text-dark small">Password</label>
                             <div class="position-relative">
                                 <i class="bi bi-lock input-icon"></i>
-                                <input type="password" name="admin_password" class="form-control" placeholder="••••••••" value="<?= htmlspecialchars($oldValues['admin_password']) ?>">
+                                <!-- FIX: Walang value= sa password fields — hindi na nire-refill ang password -->
+                                <input type="password" name="admin_password" class="form-control" placeholder="••••••••">
                             </div>
                         </div>
                     </div>
@@ -314,14 +309,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <label class="form-label fw-semibold text-dark small">Instructor Username</label>
                             <div class="position-relative">
                                 <i class="bi bi-person input-icon"></i>
-                                <input type="text" name="instructor_username" class="form-control" placeholder="Enter username" value="<?= htmlspecialchars($oldValues['instructor_username']) ?>">
+                                <input type="text" name="instructor_username" class="form-control" placeholder="Enter username"
+                                       value="<?= htmlspecialchars($oldValues['instructor_username']) ?>">
                             </div>
                         </div>
                         <div class="mb-4 position-relative">
                             <label class="form-label fw-semibold text-dark small">Password</label>
                             <div class="position-relative">
                                 <i class="bi bi-lock input-icon"></i>
-                                <input type="password" name="instructor_password" class="form-control" placeholder="••••••••" value="<?= htmlspecialchars($oldValues['instructor_password']) ?>">
+                                <!-- FIX: Walang value= sa password fields -->
+                                <input type="password" name="instructor_password" class="form-control" placeholder="••••••••">
                             </div>
                         </div>
                     </div>
@@ -331,14 +328,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <label class="form-label fw-semibold text-dark small">School ID</label>
                             <div class="position-relative">
                                 <i class="bi bi-credit-card-2-front input-icon"></i>
-                                <input type="text" name="school_id" class="form-control" placeholder="e.g. 2024-00001" value="<?= htmlspecialchars($oldValues['school_id']) ?>">
+                                <input type="text" name="school_id" class="form-control" placeholder="e.g. 2024-00001"
+                                       value="<?= htmlspecialchars($oldValues['school_id']) ?>">
                             </div>
                         </div>
                         <div class="mb-4 position-relative">
                             <label class="form-label fw-semibold text-dark small">Password</label>
                             <div class="position-relative">
                                 <i class="bi bi-lock input-icon"></i>
-                                <input type="password" name="student_password" class="form-control" placeholder="••••••••" value="<?= htmlspecialchars($oldValues['student_password']) ?>">
+                                <!-- FIX: Walang value= sa password fields -->
+                                <input type="password" name="student_password" class="form-control" placeholder="••••••••">
                             </div>
                         </div>
                     </div>
@@ -349,7 +348,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <p class="text-muted small mb-1">
                             Don't have an account? <a href="register.php" class="text-decoration-none fw-semibold text-primary">Create an account</a>
                         </p>
-                        <a href="forgot_password.php" class="text-decoration-none text-muted small fw-semibold hover-primary">Forgot Password?</a>
+                        <a href="forgot_password.php" class="text-decoration-none text-muted small fw-semibold">Forgot Password?</a>
                     </div>
                 </form>
             </div>
@@ -359,24 +358,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </div>
 
 <script>
-const role = document.getElementById('role');
-const adminFields = document.getElementById('adminFields');
+const role             = document.getElementById('role');
+const adminFields      = document.getElementById('adminFields');
 const instructorFields = document.getElementById('instructorFields');
-const studentFields = document.getElementById('studentFields');
-const loginBtn = document.getElementById('loginBtn');
+const studentFields    = document.getElementById('studentFields');
+const loginBtn         = document.getElementById('loginBtn');
 
 function updateFields() {
-    adminFields.style.display = "none";
+    adminFields.style.display      = "none";
     instructorFields.style.display = "none";
-    studentFields.style.display = "none";
+    studentFields.style.display    = "none";
 
-    if (role.value === "ADMIN") adminFields.style.display = "block";
-    if (role.value === "INSTRUCTOR") instructorFields.style.display = "block";
-    if (role.value === "STUDENT") studentFields.style.display = "block";
-
-    adminFields.classList.add("animated-field");
-    instructorFields.classList.add("animated-field");
-    studentFields.classList.add("animated-field");
+    if (role.value === "ADMIN")      { adminFields.style.display      = "block"; adminFields.classList.add("animated-field"); }
+    if (role.value === "INSTRUCTOR") { instructorFields.style.display = "block"; instructorFields.classList.add("animated-field"); }
+    if (role.value === "STUDENT")    { studentFields.style.display    = "block"; studentFields.classList.add("animated-field"); }
 
     validateForm();
 }
@@ -384,16 +379,16 @@ function updateFields() {
 function validateForm() {
     let valid = false;
     if (role.value === "ADMIN") {
-        valid = (document.querySelector('input[name="admin_username"]').value.trim() !== "" && 
-                 document.querySelector('input[name="admin_password"]').value.trim() !== "");
+        valid = (document.querySelector('input[name="admin_username"]').value.trim() !== "" &&
+                 document.querySelector('input[name="admin_password"]').value !== "");
     }
     if (role.value === "INSTRUCTOR") {
-        valid = (document.querySelector('input[name="instructor_username"]').value.trim() !== "" && 
-                 document.querySelector('input[name="instructor_password"]').value.trim() !== "");
+        valid = (document.querySelector('input[name="instructor_username"]').value.trim() !== "" &&
+                 document.querySelector('input[name="instructor_password"]').value !== "");
     }
     if (role.value === "STUDENT") {
-        valid = (document.querySelector('input[name="school_id"]').value.trim() !== "" && 
-                 document.querySelector('input[name="student_password"]').value.trim() !== "");
+        valid = (document.querySelector('input[name="school_id"]').value.trim() !== "" &&
+                 document.querySelector('input[name="student_password"]').value !== "");
     }
     loginBtn.disabled = !valid;
 }
