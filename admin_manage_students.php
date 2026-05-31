@@ -8,6 +8,14 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'ADMIN') {
 require_once 'db.php';
 require_once 'config.php';
 
+// Pending approvals badge
+$pendingCount = 0;
+try {
+    $pi = $pdo->query("SELECT COUNT(*) FROM instructor WHERE status='pending'")->fetchColumn();
+    $ps = $pdo->query("SELECT COUNT(*) FROM students WHERE status='pending'")->fetchColumn();
+    $pendingCount = (int)$pi + (int)$ps;
+} catch(Exception $e) { $pendingCount = 0; }
+
 // Fetch distinct year_level and block combinations
 $stmtGroups = $pdo->prepare("SELECT DISTINCT year_level, block FROM students ORDER BY year_level, block");
 $stmtGroups->execute();
@@ -110,6 +118,14 @@ footer { position: fixed; bottom:0; width:100%; background: rgba(0,0,0,0.55); ba
             <li class="nav-item"><a class="nav-link" href="admin_about.php">About</a></li>
             <li class="nav-item"><a class="nav-link" href="admin_manage_instructors.php">Instructors</a></li>
             <li class="nav-item"><a class="nav-link active" href="#">Students</a></li>
+            <li class="nav-item">
+                <a class="nav-link" href="admin_pending_approvals.php">
+                    Approvals
+                    <?php if($pendingCount > 0): ?>
+                        <span style="background:#f59e0b;color:#000;font-weight:700;font-size:.72rem;padding:2px 8px;border-radius:20px;margin-left:4px;"><?= $pendingCount ?></span>
+                    <?php endif; ?>
+                </a>
+            </li>
             <li class="nav-item"><a class="nav-link" href="admin_feedback.php">Feedback</a></li>
             <li class="nav-item"><a class="nav-link link-gold" href="logout.php">Logout</a></li>
         </ul>
