@@ -147,243 +147,215 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 ?>
-
 <!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>BSCS Student Progress — Login</title>
-
+<title>CS Tutoring Hub — Login</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Montserrat:wght@700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@700;800&display=swap');
 
-/* DISABLE BUTTON */
-.btn-login:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-/* FULL SCREEN */
-body {
-    margin: 0;
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    align-items: center;
-    background: #0a1228;
-    font-family: "Poppins", sans-serif;
-    position: relative;
-    overflow: hidden;
-}
-
-/* WATERMARK */
-body::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: url('jrmsu.png') center/45% no-repeat;
-    opacity: 0.27;
-    z-index: 1;
-}
-
-/* TITLE */
-.system-title {
-    position: absolute;
-    top: 40px;
-    font-family: "Montserrat", sans-serif;
-    font-weight: 800;
-    font-size: 42px;
-    color: white;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 14px;
-    z-index: 3;
-
-    /* ✨ SYSTEM TITLE ANIMATION */
-    opacity: 0;
-    transform: translateY(-25px);
-    animation: titleFade 1s ease-out forwards;
-}
-
-@keyframes titleFade {
-    from {
-        opacity: 0;
-        transform: translateY(-25px);
+    body {
+        font-family: 'Inter', sans-serif;
+        background-color: #f8f9fa;
+        margin: 0;
+        overflow-x: hidden;
     }
-    to {
-        opacity: 1;
-        transform: translateY(0);
+
+    /* Split Screen Branding Panel */
+    .brand-panel {
+        background: linear-gradient(135deg, #0a1228 0%, #1a34ff 100%);
+        position: relative;
     }
-}
+    .brand-panel::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: url('jrmsu.png') center/50% no-repeat;
+        opacity: 0.15;
+        mix-blend-mode: overlay;
+    }
+    .brand-title {
+        font-family: 'Montserrat', sans-serif;
+        letter-spacing: -0.5px;
+    }
 
-.system-title img {
-    width: 85px;
-    height: 85px;
-}
+    /* Form Panel */
+    .form-control, .form-select {
+        height: 52px;
+        padding-left: 45px;
+        border-radius: 10px;
+        border: 1px solid #dee2e6;
+        background-color: #f8f9fa;
+        font-size: 0.95rem;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: #1a34ff;
+        box-shadow: 0 0 0 4px rgba(26,52,255,0.1);
+        background-color: #ffffff;
+    }
+    .input-icon {
+        position: absolute;
+        top: 50%;
+        left: 16px;
+        transform: translateY(-50%);
+        color: #6c757d;
+        font-size: 1.1rem;
+        z-index: 4;
+    }
 
-/* FORM BOX */
-.container-box {
-    position: relative;
-    z-index: 2;
-    width: 380px;
-    background: rgba(255,255,255,0.12);
-    backdrop-filter: blur(14px);
-    border-radius: 18px;
-    padding: 32px;
-    box-shadow: 0 0 35px rgba(0,0,0,0.45);
-    text-align: center;
-    margin-top: 120px;
+    /* Custom Button */
+    .btn-login {
+        height: 52px;
+        border-radius: 10px;
+        background: #1a34ff;
+        color: #fff;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        transition: all 0.3s ease;
+    }
+    .btn-login:hover:not(:disabled) {
+        background: #0022cc;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(26,52,255,0.2);
+    }
+    .btn-login:disabled {
+        opacity: 0.65;
+        cursor: not-allowed;
+    }
 
-    /* ✨ FORM SLIDE + FADE ANIMATION */
-    opacity: 0;
-    transform: translateY(40px);
-    animation: formFade 0.7s ease-out forwards;
-}
-
-@keyframes formFade {
-    from { opacity: 0; transform: translateY(40px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-/* FIELD ANIMATION */
-.animated-field {
-    opacity: 0;
-    transform: translateY(15px);
-    animation: fadeField 0.5s ease forwards;
-}
-
-@keyframes fadeField {
-    to { opacity: 1; transform: translateY(0); }
-}
-
-.position-relative span.input-icon {
-    position: absolute;
-    top: 12px;
-    left: 12px;
-    color: #164bff;
-    font-size: 18px;
-}
-
-.form-control, .form-select {
-    height: 48px;
-    padding-left: 40px;
-    border-radius: 12px;
-    border: 1px solid #d6ddff;
-}
-
-/* BUTTON */
-.btn-login {
-    width: 100%;
-    height: 48px;
-    border-radius: 12px;
-    background: linear-gradient(135deg, #1a34ff, #0066ff);
-    color: #fcfcfe;
-    font-weight: 600;
-    transition: 0.2s;
-}
-
-.btn-login:hover:not(:disabled) {
-    background: linear-gradient(135deg, #0d24c1, #0044cc);
-}
+    /* Animations */
+    .fade-in-up {
+        animation: fadeInUp 0.6s ease-out forwards;
+    }
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .animated-field {
+        animation: fadeIn 0.4s ease forwards;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
 </style>
 </head>
-
 <body>
 
-<div class="system-title">
-    CS TUTORING HUB
-    <img src="ccs.png">
-</div>
-
-<div class="container-box">
-	<h3 class="text-white fw-bold" style="font-size: 32px; letter-spacing: 1px;">
-		LOGIN
-	</h3>
-	<p class="text-light mb-3">Access your account</p>
-
-    <?php if($loginError): ?>
-        <div class="alert alert-danger text-center"><?= $loginError ?></div>
-    <?php endif; ?>
-
-    <form action="" method="POST">
-
-        <label class="form-label text-white">Select Role</label>
-        <div class="mb-3 position-relative">
-            <span class="input-icon"><i class="bi bi-person-badge"></i></span>
-            <select name="role" id="role" class="form-select">
-                <option value="">-- Select Role --</option>
-                <option value="ADMIN" <?= $oldValues['role']=='ADMIN'?'selected':'' ?>>Admin</option>
-                <option value="INSTRUCTOR" <?= $oldValues['role']=='INSTRUCTOR'?'selected':'' ?>>Instructor</option>
-                <option value="STUDENT" <?= $oldValues['role']=='STUDENT'?'selected':'' ?>>Student</option>
-            </select>
-        </div>
-
-        <!-- ADMIN -->
-        <div id="adminFields" style="display:none">
-            <label class="form-label text-white">Username</label>
-            <div class="mb-3 position-relative">
-                <span class="input-icon"><i class="bi bi-person"></i></span>
-                <input type="text" name="admin_username" class="form-control"
-                value="<?= htmlspecialchars($oldValues['admin_username']) ?>">
-            </div>
-
-            <label class="form-label text-white">Password</label>
-            <div class="mb-3 position-relative">
-                <span class="input-icon"><i class="bi bi-lock"></i></span>
-                <input type="password" name="admin_password" class="form-control"
-                value="<?= htmlspecialchars($oldValues['admin_password']) ?>">
+<div class="container-fluid p-0 vh-100">
+    <div class="row g-0 h-100">
+        
+        <div class="col-lg-5 col-xl-6 d-none d-lg-flex brand-panel flex-column justify-content-center align-items-center text-center p-5">
+            <div class="position-relative z-1 text-white fade-in-up">
+                <img src="ccs.png" alt="Logo" class="mb-4 shadow-sm rounded-circle" style="width: 130px;">
+                <h1 class="brand-title fw-bold display-5 mb-3">CS Tutoring Hub</h1>
+                <p class="fs-5 opacity-75 fw-light">Empowering students to excel through peer-led learning.</p>
             </div>
         </div>
 
-        <!-- INSTRUCTOR -->
-        <div id="instructorFields" style="display:none">
-            <label class="form-label text-white">Username</label>
-            <div class="mb-3 position-relative">
-                <span class="input-icon"><i class="bi bi-person"></i></span>
-                <input type="text" name="instructor_username" class="form-control"
-                value="<?= htmlspecialchars($oldValues['instructor_username']) ?>">
-            </div>
+        <div class="col-12 col-lg-7 col-xl-6 d-flex align-items-center justify-content-center">
+            <div class="w-100 px-4 px-md-5 py-5 fade-in-up" style="max-width: 550px;">
+                
+                <div class="d-lg-none text-center mb-5">
+                    <img src="ccs.png" alt="Logo" class="mb-3" style="width: 80px;">
+                    <h2 class="brand-title fw-bold text-dark mb-0">CS Tutoring Hub</h2>
+                </div>
 
-            <label class="form-label text-white">Password</label>
-            <div class="mb-3 position-relative">
-                <span class="input-icon"><i class="bi bi-lock"></i></span>
-                <input type="password" name="instructor_password" class="form-control"
-                value="<?= htmlspecialchars($oldValues['instructor_password']) ?>">
+                <div class="mb-5">
+                    <h2 class="fw-bold text-dark mb-2">Welcome Back</h2>
+                    <p class="text-muted">Please enter your details to sign in to your account.</p>
+                </div>
+
+                <?php if($loginError): ?>
+                    <div class="alert alert-danger rounded-3 border-0 shadow-sm d-flex align-items-center mb-4">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        <div><?= $loginError ?></div>
+                    </div>
+                <?php endif; ?>
+
+                <form action="" method="POST" id="loginForm">
+
+                    <div class="mb-4 position-relative">
+                        <label class="form-label fw-semibold text-dark small">Select Role</label>
+                        <div class="position-relative">
+                            <i class="bi bi-person-badge input-icon"></i>
+                            <select name="role" id="role" class="form-select">
+                                <option value="">-- Choose your role --</option>
+                                <option value="ADMIN" <?= $oldValues['role']=='ADMIN'?'selected':'' ?>>Administrator</option>
+                                <option value="INSTRUCTOR" <?= $oldValues['role']=='INSTRUCTOR'?'selected':'' ?>>Instructor</option>
+                                <option value="STUDENT" <?= $oldValues['role']=='STUDENT'?'selected':'' ?>>Student</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="adminFields" style="display:none">
+                        <div class="mb-3 position-relative">
+                            <label class="form-label fw-semibold text-dark small">Admin Username</label>
+                            <div class="position-relative">
+                                <i class="bi bi-person input-icon"></i>
+                                <input type="text" name="admin_username" class="form-control" placeholder="Enter username" value="<?= htmlspecialchars($oldValues['admin_username']) ?>">
+                            </div>
+                        </div>
+                        <div class="mb-4 position-relative">
+                            <label class="form-label fw-semibold text-dark small">Password</label>
+                            <div class="position-relative">
+                                <i class="bi bi-lock input-icon"></i>
+                                <input type="password" name="admin_password" class="form-control" placeholder="••••••••" value="<?= htmlspecialchars($oldValues['admin_password']) ?>">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="instructorFields" style="display:none">
+                        <div class="mb-3 position-relative">
+                            <label class="form-label fw-semibold text-dark small">Instructor Username</label>
+                            <div class="position-relative">
+                                <i class="bi bi-person input-icon"></i>
+                                <input type="text" name="instructor_username" class="form-control" placeholder="Enter username" value="<?= htmlspecialchars($oldValues['instructor_username']) ?>">
+                            </div>
+                        </div>
+                        <div class="mb-4 position-relative">
+                            <label class="form-label fw-semibold text-dark small">Password</label>
+                            <div class="position-relative">
+                                <i class="bi bi-lock input-icon"></i>
+                                <input type="password" name="instructor_password" class="form-control" placeholder="••••••••" value="<?= htmlspecialchars($oldValues['instructor_password']) ?>">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="studentFields" style="display:none">
+                        <div class="mb-3 position-relative">
+                            <label class="form-label fw-semibold text-dark small">School ID</label>
+                            <div class="position-relative">
+                                <i class="bi bi-credit-card-2-front input-icon"></i>
+                                <input type="text" name="school_id" class="form-control" placeholder="e.g. 2024-00001" value="<?= htmlspecialchars($oldValues['school_id']) ?>">
+                            </div>
+                        </div>
+                        <div class="mb-4 position-relative">
+                            <label class="form-label fw-semibold text-dark small">Password</label>
+                            <div class="position-relative">
+                                <i class="bi bi-lock input-icon"></i>
+                                <input type="password" name="student_password" class="form-control" placeholder="••••••••" value="<?= htmlspecialchars($oldValues['student_password']) ?>">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-login w-100 mt-2" id="loginBtn" disabled>Sign In</button>
+
+                    <div class="mt-4 text-center">
+                        <p class="text-muted small mb-1">
+                            Don't have an account? <a href="register.php" class="text-decoration-none fw-semibold text-primary">Create an account</a>
+                        </p>
+                        <a href="forgot_password.php" class="text-decoration-none text-muted small fw-semibold hover-primary">Forgot Password?</a>
+                    </div>
+                </form>
             </div>
         </div>
 
-        <!-- STUDENT -->
-        <div id="studentFields" style="display:none">
-            <label class="form-label text-white">School ID</label>
-            <div class="mb-3 position-relative">
-                <span class="input-icon"><i class="bi bi-credit-card-2-front"></i></span>
-                <input type="text" name="school_id" class="form-control"
-                value="<?= htmlspecialchars($oldValues['school_id']) ?>">
-            </div>
-
-            <label class="form-label text-white">Password</label>
-            <div class="mb-3 position-relative">
-                <span class="input-icon"><i class="bi bi-lock"></i></span>
-                <input type="password" name="student_password" class="form-control"
-                value="<?= htmlspecialchars($oldValues['student_password']) ?>">
-            </div>
-        </div>
-
-        <button type="submit" class="btn btn-login mt-2" id="loginBtn" disabled>LOGIN</button>
-
-        <p class="mt-3">
-            <a href="register.php" class="text-info">Register Here</a><br>
-            <a href="forgot_password.php" class="text-warning">Forgot Password?</a>
-        </p>
-
-    </form>
-
+    </div>
 </div>
 
 <script>
@@ -402,7 +374,6 @@ function updateFields() {
     if (role.value === "INSTRUCTOR") instructorFields.style.display = "block";
     if (role.value === "STUDENT") studentFields.style.display = "block";
 
-    /* ✨ ADD ANIMATION CLASS */
     adminFields.classList.add("animated-field");
     instructorFields.classList.add("animated-field");
     studentFields.classList.add("animated-field");
@@ -412,25 +383,18 @@ function updateFields() {
 
 function validateForm() {
     let valid = false;
-
     if (role.value === "ADMIN") {
-        let u = document.querySelector('input[name="admin_username"]').value.trim();
-        let p = document.querySelector('input[name="admin_password"]').value.trim();
-        valid = (u !== "" && p !== "");
+        valid = (document.querySelector('input[name="admin_username"]').value.trim() !== "" && 
+                 document.querySelector('input[name="admin_password"]').value.trim() !== "");
     }
-
     if (role.value === "INSTRUCTOR") {
-        let u = document.querySelector('input[name="instructor_username"]').value.trim();
-        let p = document.querySelector('input[name="instructor_password"]').value.trim();
-        valid = (u !== "" && p !== "");
+        valid = (document.querySelector('input[name="instructor_username"]').value.trim() !== "" && 
+                 document.querySelector('input[name="instructor_password"]').value.trim() !== "");
     }
-
     if (role.value === "STUDENT") {
-        let id = document.querySelector('input[name="school_id"]').value.trim();
-        let p = document.querySelector('input[name="student_password"]').value.trim();
-        valid = (id !== "" && p !== "");
+        valid = (document.querySelector('input[name="school_id"]').value.trim() !== "" && 
+                 document.querySelector('input[name="student_password"]').value.trim() !== "");
     }
-
     loginBtn.disabled = !valid;
 }
 
@@ -439,5 +403,6 @@ document.addEventListener("input", validateForm);
 document.addEventListener("DOMContentLoaded", updateFields);
 </script>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
