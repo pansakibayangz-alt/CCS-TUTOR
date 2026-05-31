@@ -1,315 +1,495 @@
 <?php
+require_once 'functions.php';
 require_once 'db.php';
 
-// Fetch role options for Admin positions
-$adminPositions = ['Associate Dean', 'College Dean', 'Program chair'];
-$studentYears = ['1', '2', '3', '4'];
-$studentBlocks = ['A', 'B', 'C', 'D', 'E', 'F'];
+$success = '';
+$error   = '';
+$role    = $_POST['role'] ?? '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $role = trim($_POST['role'] ?? '');
+
+    /* ── INSTRUCTOR REGISTRATION ── */
+    if ($role === 'INSTRUCTOR') {
+        $firstname   = trim($_POST['firstname']          ?? '');
+        $middlename  = trim($_POST['middlename']         ?? '');
+        $surname     = trim($_POST['surname']            ?? '');
+        $degree      = trim($_POST['degree_designation'] ?? '');
+        $username    = trim($_POST['username']           ?? '');
+        $password    = $_POST['password']                ?? '';
+        $confirm     = $_POST['confirm_password']        ?? '';
+
+        if (!$firstname || !$surname || !$username || !$password) {
+            $error = "Please fill in all required fields.";
+        } elseif (strlen($password) < 6) {
+            $error = "Password must be at least 6 characters.";
+        } elseif ($password !== $confirm) {
+            $error = "Passwords do not match.";
+        } else {
+            /* duplicate check */
+            $chk = $pdo->prepare("SELECT instructor_id FROM instructor WHERE username = ?");
+            $chk->execute([$username]);
+            if ($chk->rowCount() > 0) {
+                $error = "Username '$username' is already taken.";
+            } else {
+                $hash = password_hash($password, PASSWORD_DEFAULT);
+                $stmt = $pdo->prepare("
+                    INSERT INTO instructor
+                        (firstname, middlename, surname, degree_designation, username, password, status, registered_at)
+                    VALUES (?, ?, ?, ?, ?, ?, 'pending', NOW())
+                ");
+                $stmt->execute([$firstname, $middlename, $surname, $degree, $username, $hash]);
+                $success = "INSTRUCTOR";
+            }
+        }
+
+    /* ── STUDENT REGISTRATION ── */
+    } elseif ($role === 'STUDENT') {
+        $firstname    = trim($_POST['firstname']    ?? '');
+        $middlename   = trim($_POST['middlename']   ?? '');
+        $surname      = trim($_POST['surname']      ?? '');
+        $school_id    = trim($_POST['school_id']    ?? '');
+        $phone_number = trim($_POST['phone_number'] ?? '');
+        $facebook     = trim($_POST['facebook_name']?? '');
+        $year_level   = trim($_POST['year_level']   ?? '');
+        $block        = trim($_POST['block']         ?? '');
+        $password     = $_POST['password']           ?? '';
+        $confirm      = $_POST['confirm_password']   ?? '';
+
+        if (!$firstname || !$surname || !$school_id || !$year_level || !$block || !$password) {
+            $error = "Please fill in all required fields.";
+        } elseif (strlen($password) < 6) {
+            $error = "Password must be at least 6 characters.";
+        } elseif ($password !== $confirm) {
+            $error = "Passwords do not match.";
+        } else {
+            $chk = $pdo->prepare("SELECT student_id FROM students WHERE school_id = ?");
+            $chk->execute([$school_id]);
+            if ($chk->rowCount() > 0) {
+                $error = "School ID '$school_id' is already registered.";
+            } else {
+                $hash = password_hash($password, PASSWORD_DEFAULT);
+                $stmt = $pdo->prepare("
+                    INSERT INTO students
+                        (firstname, middlename, surname, school_id, phone_number, facebook_name,
+                         year_level, block, password, status, registered_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())
+                ");
+                $stmt->execute([
+                    $firstname, $middlename, $surname, $school_id,
+                    $phone_number, $facebook, $year_level, $block, $hash
+                ]);
+                $success = "STUDENT";
+            }
+        }
+
+    } else {
+        $error = "Please select a role.";
+    }
+}
 ?>
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Register — BSCS Student Progress System</title>
-
+<title>Register — CS Tutoring Hub</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
-
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
 <style>
-/* (NO CHANGES — your styles remain exactly the same) */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Montserrat:wght@700;800&display=swap');
+
 body {
     margin: 0;
-    font-family: 'Poppins', sans-serif;
-    background: #0a1228;
-    height: 100vh;
+    min-height: 100vh;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    overflow: hidden;
+    background: #0a1228;
+    font-family: "Poppins", sans-serif;
     position: relative;
+    overflow-x: hidden;
+    padding-bottom: 40px;
 }
+
 body::before {
     content: "";
     position: absolute;
-    width: 850px;
-    height: 550px;
-    background: url("jrmsu.png") no-repeat center;
-    background-size: contain;
-    opacity: 0.06;
-    left: 50%;
-    top: 52%;
-    transform: translate(-50%, -50%);
-    pointer-events: none;
+    inset: 0;
+    background: url('jrmsu.png') center/45% no-repeat;
+    opacity: 0.15;
+    z-index: 0;
 }
+
 .system-title {
-    font-size: 30px;
-    font-weight: 700;
+    position: relative;
+    z-index: 2;
+    margin-top: 36px;
+    font-family: "Montserrat", sans-serif;
+    font-weight: 800;
+    font-size: 32px;
     color: white;
-    margin-bottom: 22px;
-    letter-spacing: 1px;
-    opacity: 0;
-    transform: translateY(-20px);
-    animation: titleFade 1s ease-out forwards;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: titleFade .8s ease-out forwards;
 }
+.system-title img { width:65px; height:65px; }
+
 @keyframes titleFade {
-    from { opacity: 0; transform: translateY(-20px); }
-    to { opacity: 1; transform: translateY(0); }
+    from { opacity:0; transform:translateY(-20px); }
+    to   { opacity:1; transform:translateY(0); }
 }
-.glass-box {
-    width: 420px;
-    max-height: 80vh;
-    overflow-y: auto;
-    padding-right: 14px;
-    background: rgba(255, 255, 255, 0.12);
-    padding: 28px;
-    border-radius: 12px;
-    backdrop-filter: blur(12px);
-    box-shadow: 0 0 20px rgba(0,0,0,0.35);
-    opacity: 0;
-    transform: translateY(40px);
-    animation: formFade 0.9s ease-out forwards;
+
+.container-box {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: 480px;
+    background: rgba(255,255,255,0.10);
+    backdrop-filter: blur(16px);
+    border-radius: 20px;
+    padding: 36px 32px;
+    box-shadow: 0 0 40px rgba(0,0,0,0.5);
+    margin-top: 28px;
+    animation: formFade .7s ease-out forwards;
 }
 @keyframes formFade {
-    from { opacity: 0; transform: translateY(40px); }
-    to { opacity: 1; transform: translateY(0); }
+    from { opacity:0; transform:translateY(30px); }
+    to   { opacity:1; transform:translateY(0); }
 }
-.glass-box::-webkit-scrollbar { width: 6px; }
-.glass-box::-webkit-scrollbar-thumb {
-    background: rgba(255,255,255,0.3);
-    border-radius: 20px;
+
+.form-label { color: rgba(255,255,255,0.85); font-size:.87rem; margin-bottom:4px; }
+.form-control, .form-select {
+    height: 46px;
+    padding-left: 40px;
+    border-radius: 10px;
+    border: 1px solid #d6ddff;
+    background: rgba(255,255,255,0.92);
 }
-.form-label {
-    font-weight: 600;
-    color: #ffffff;
-    font-size: 0.86rem;
+.form-control:focus, .form-select:focus {
+    border-color: #1a34ff;
+    box-shadow: 0 0 0 3px rgba(26,52,255,.18);
 }
-.form-control,
-.form-select {
-    background: rgba(255,255,255,0.55);
-    border: none;
-    border-radius: 8px;
-    height: 36px;
-    font-size: 0.85rem;
+.icon-wrap {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    color: #164bff;
+    font-size: 17px;
 }
-.btn-primary {
+.pos-rel { position: relative; }
+
+.btn-register {
     width: 100%;
-    background: #1a73e8;
+    height: 48px;
     border: none;
-    padding: 10px;
-    font-weight: 600;
-    border-radius: 8px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #1a34ff, #0066ff);
+    color: #fff;
+    font-weight: 700;
+    font-size: 1rem;
+    transition: .2s;
+    cursor: pointer;
 }
-.btn-primary:hover { background: #155fc0; }
-.btn-secondary,
-.btn-outline-success {
-    border-radius: 8px;
-    padding: 8px 14px;
+.btn-register:hover { background: linear-gradient(135deg, #0d24c1, #0044cc); }
+.btn-register:disabled { opacity:.5; cursor:not-allowed; }
+
+.success-box {
+    background: rgba(34,197,94,.18);
+    border: 1px solid rgba(34,197,94,.5);
+    border-radius: 16px;
+    padding: 36px 28px;
+    text-align: center;
+    color: white;
 }
-.common-field,
-.admin-fields,
-.instructor-fields,
-.student-fields {
-    display: none;
-}
+.success-box .bi { font-size: 56px; color: #4ade80; margin-bottom: 14px; display:block; }
+.success-box h4 { color: #4ade80; font-weight: 700; margin-bottom: 10px; }
+.success-box p  { color: rgba(255,255,255,.8); font-size:.92rem; margin:0; }
+
+.dynamic-fields { display:none; }
 </style>
 </head>
-
 <body>
 
 <div class="system-title">
     CS TUTORING HUB
+    <img src="ccs.png" alt="">
 </div>
 
-<div class="glass-box">
+<div class="container-box">
 
-<h4 class="text-center text-white mb-3">Create an Account</h4>
-
-<form action="process_register.php" method="post" id="registerForm" autocomplete="off">
-
-    <!-- ROLE -->
-    <div class="mb-3">
-        <label class="form-label">Select Role</label>
-        <select name="role" id="role" class="form-select" required>
-            <option value="">-- Select Role --</option>
-            <option value="ADMIN">Admin</option>
-            <option value="INSTRUCTOR">Instructor</option>
-            <option value="STUDENT">Student</option>
-        </select>
+<?php if ($success): ?>
+    <!-- ── SUCCESS STATE ── -->
+    <div class="success-box">
+        <i class="bi bi-hourglass-split"></i>
+        <h4>Registration Submitted!</h4>
+        <p>
+            Your <strong><?= $success === 'INSTRUCTOR' ? 'Instructor' : 'Student' ?></strong>
+            account is now <strong>pending approval</strong>.<br><br>
+            Please wait for the <strong>Admin</strong> to review and approve your account
+            before you can log in.
+        </p>
+        <a href="login.php" class="btn btn-outline-light mt-4" style="border-radius:10px; font-weight:600;">
+            <i class="bi bi-arrow-left-circle me-1"></i> Back to Login
+        </a>
     </div>
 
-    <!-- COMMON FIELDS -->
-    <div class="mb-3 common-field">
-        <label class="form-label">Surname</label>
-        <input type="text" name="surname" class="form-control">
-    </div>
+<?php else: ?>
+    <!-- ── FORM ── -->
+    <h3 class="text-white fw-bold text-center mb-1" style="font-size:28px;">REGISTER</h3>
+    <p class="text-light text-center mb-3" style="font-size:.85rem;">Create your account</p>
 
-    <div class="mb-3 common-field">
-        <label class="form-label">First Name</label>
-        <input type="text" name="firstname" class="form-control">
-    </div>
+    <?php if ($error): ?>
+        <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
+    <?php endif; ?>
 
-    <div class="mb-3 common-field">
-        <label class="form-label">Middle Name</label>
-        <input type="text" name="middlename" class="form-control">
-    </div>
+    <form method="POST" id="regForm">
 
-    <div class="mb-3 common-field">
-        <label class="form-label">Email</label>
-        <input type="email" name="email" class="form-control">
-    </div>
-
-    <div class="mb-3 common-field">
-        <label class="form-label">Password</label>
-        <input type="password" name="password" class="form-control">
-    </div>
-
-    <!-- ADMIN FIELDS -->
-    <div class="admin-fields">
+        <!-- ROLE SELECT -->
         <div class="mb-3">
-            <label class="form-label">Username</label>
-            <input type="text" name="admin_username" class="form-control">
+            <label class="form-label">Select Role <span style="color:#f87171">*</span></label>
+            <div class="pos-rel">
+                <span class="icon-wrap"><i class="bi bi-person-badge"></i></span>
+                <select name="role" id="roleSelect" class="form-select" required>
+                    <option value="">-- Select Role --</option>
+                    <option value="INSTRUCTOR" <?= $role==='INSTRUCTOR'?'selected':'' ?>>Instructor</option>
+                    <option value="STUDENT"    <?= $role==='STUDENT'   ?'selected':'' ?>>Student</option>
+                </select>
+            </div>
         </div>
 
-        <div class="mb-3">
-            <label class="form-label">Position</label>
-            <select name="position" class="form-select">
-                <option value="">-- Select Position --</option>
-                <?php
-                $stmt = $pdo->prepare("SELECT position FROM admin");
-                $stmt->execute();
-                $taken = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        <!-- ── INSTRUCTOR FIELDS ── -->
+        <div id="instructorFields" class="dynamic-fields">
 
-                // ✅ YOUR LOGIC APPLIED HERE
-                $hasAssociateDean = in_array('Associate Dean', $taken);
-                $hasCollegeDean = in_array('College Dean', $taken);
+            <div class="row g-2 mb-2">
+                <div class="col-6">
+                    <label class="form-label">First Name <span style="color:#f87171">*</span></label>
+                    <div class="pos-rel">
+                        <span class="icon-wrap"><i class="bi bi-person"></i></span>
+                        <input type="text" name="firstname" class="form-control"
+                               value="<?= htmlspecialchars($_POST['firstname'] ?? '') ?>" placeholder="Juan">
+                    </div>
+                </div>
+                <div class="col-6">
+                    <label class="form-label">Surname <span style="color:#f87171">*</span></label>
+                    <div class="pos-rel">
+                        <span class="icon-wrap"><i class="bi bi-person"></i></span>
+                        <input type="text" name="surname" class="form-control"
+                               value="<?= htmlspecialchars($_POST['surname'] ?? '') ?>" placeholder="dela Cruz">
+                    </div>
+                </div>
+            </div>
 
-                if ($hasAssociateDean || $hasCollegeDean) {
-                    echo "<option value='Program chair'>Program chair</option>";
-                } else {
-                    foreach ($adminPositions as $p) {
-                        if (!in_array($p, $taken)) {
-                            echo "<option value='$p'>$p</option>";
-                        }
-                    }
-                }
-                ?>
-            </select>
+            <div class="row g-2 mb-2">
+                <div class="col-6">
+                    <label class="form-label">Middle Name</label>
+                    <div class="pos-rel">
+                        <span class="icon-wrap"><i class="bi bi-person"></i></span>
+                        <input type="text" name="middlename" class="form-control"
+                               value="<?= htmlspecialchars($_POST['middlename'] ?? '') ?>" placeholder="(optional)">
+                    </div>
+                </div>
+                <div class="col-6">
+                    <label class="form-label">Degree / Designation</label>
+                    <div class="pos-rel">
+                        <span class="icon-wrap"><i class="bi bi-award"></i></span>
+                        <input type="text" name="degree_designation" class="form-control"
+                               value="<?= htmlspecialchars($_POST['degree_designation'] ?? '') ?>" placeholder="e.g. MIT">
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-2">
+                <label class="form-label">Username <span style="color:#f87171">*</span></label>
+                <div class="pos-rel">
+                    <span class="icon-wrap"><i class="bi bi-at"></i></span>
+                    <input type="text" name="username" class="form-control"
+                           value="<?= htmlspecialchars($_POST['username'] ?? '') ?>" placeholder="e.g. jdelacruz">
+                </div>
+            </div>
+
+            <div class="row g-2 mb-3">
+                <div class="col-6">
+                    <label class="form-label">Password <span style="color:#f87171">*</span></label>
+                    <div class="pos-rel">
+                        <span class="icon-wrap"><i class="bi bi-lock"></i></span>
+                        <input type="password" name="password" id="pw_i" class="form-control" placeholder="Min. 6 chars">
+                    </div>
+                </div>
+                <div class="col-6">
+                    <label class="form-label">Confirm Password <span style="color:#f87171">*</span></label>
+                    <div class="pos-rel">
+                        <span class="icon-wrap"><i class="bi bi-lock-fill"></i></span>
+                        <input type="password" name="confirm_password" id="cpw_i" class="form-control" placeholder="Re-enter">
+                    </div>
+                </div>
+            </div>
         </div>
-    </div>
 
-    <!-- INSTRUCTOR FIELDS -->
-    <div class="instructor-fields">
-        <div class="mb-3">
-            <label class="form-label">Username</label>
-            <input type="text" name="instructor_username" class="form-control">
+        <!-- ── STUDENT FIELDS ── -->
+        <div id="studentFields" class="dynamic-fields">
+
+            <div class="row g-2 mb-2">
+                <div class="col-6">
+                    <label class="form-label">First Name <span style="color:#f87171">*</span></label>
+                    <div class="pos-rel">
+                        <span class="icon-wrap"><i class="bi bi-person"></i></span>
+                        <input type="text" name="firstname" class="form-control"
+                               value="<?= htmlspecialchars($_POST['firstname'] ?? '') ?>" placeholder="Juan">
+                    </div>
+                </div>
+                <div class="col-6">
+                    <label class="form-label">Surname <span style="color:#f87171">*</span></label>
+                    <div class="pos-rel">
+                        <span class="icon-wrap"><i class="bi bi-person"></i></span>
+                        <input type="text" name="surname" class="form-control"
+                               value="<?= htmlspecialchars($_POST['surname'] ?? '') ?>" placeholder="dela Cruz">
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-2 mb-2">
+                <div class="col-6">
+                    <label class="form-label">Middle Name</label>
+                    <div class="pos-rel">
+                        <span class="icon-wrap"><i class="bi bi-person"></i></span>
+                        <input type="text" name="middlename" class="form-control"
+                               value="<?= htmlspecialchars($_POST['middlename'] ?? '') ?>" placeholder="(optional)">
+                    </div>
+                </div>
+                <div class="col-6">
+                    <label class="form-label">School ID <span style="color:#f87171">*</span></label>
+                    <div class="pos-rel">
+                        <span class="icon-wrap"><i class="bi bi-credit-card-2-front"></i></span>
+                        <input type="text" name="school_id" class="form-control"
+                               value="<?= htmlspecialchars($_POST['school_id'] ?? '') ?>" placeholder="2024-00001">
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-2 mb-2">
+                <div class="col-6">
+                    <label class="form-label">Year Level <span style="color:#f87171">*</span></label>
+                    <div class="pos-rel">
+                        <span class="icon-wrap"><i class="bi bi-mortarboard"></i></span>
+                        <select name="year_level" class="form-select">
+                            <option value="">-- Select --</option>
+                            <?php foreach(['1st Year','2nd Year','3rd Year','4th Year'] as $y): ?>
+                                <option value="<?= $y ?>" <?= ($_POST['year_level']??'')===$y?'selected':'' ?>><?= $y ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <label class="form-label">Block <span style="color:#f87171">*</span></label>
+                    <div class="pos-rel">
+                        <span class="icon-wrap"><i class="bi bi-collection"></i></span>
+                        <select name="block" class="form-select">
+                            <option value="">-- Select --</option>
+                            <?php foreach(['A','B','C','D','E'] as $b): ?>
+                                <option value="<?= $b ?>" <?= ($_POST['block']??'')===$b?'selected':'' ?>><?= $b ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-2 mb-2">
+                <div class="col-6">
+                    <label class="form-label">Contact No.</label>
+                    <div class="pos-rel">
+                        <span class="icon-wrap"><i class="bi bi-telephone"></i></span>
+                        <input type="text" name="phone_number" class="form-control"
+                               value="<?= htmlspecialchars($_POST['phone_number'] ?? '') ?>" placeholder="09xxxxxxxxx">
+                    </div>
+                </div>
+                <div class="col-6">
+                    <label class="form-label">Facebook Name</label>
+                    <div class="pos-rel">
+                        <span class="icon-wrap"><i class="bi bi-facebook"></i></span>
+                        <input type="text" name="facebook_name" class="form-control"
+                               value="<?= htmlspecialchars($_POST['facebook_name'] ?? '') ?>" placeholder="(optional)">
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-2 mb-3">
+                <div class="col-6">
+                    <label class="form-label">Password <span style="color:#f87171">*</span></label>
+                    <div class="pos-rel">
+                        <span class="icon-wrap"><i class="bi bi-lock"></i></span>
+                        <input type="password" name="password" id="pw_s" class="form-control" placeholder="Min. 6 chars">
+                    </div>
+                </div>
+                <div class="col-6">
+                    <label class="form-label">Confirm Password <span style="color:#f87171">*</span></label>
+                    <div class="pos-rel">
+                        <span class="icon-wrap"><i class="bi bi-lock-fill"></i></span>
+                        <input type="password" name="confirm_password" id="cpw_s" class="form-control" placeholder="Re-enter">
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div class="mb-3">
-            <label class="form-label">Degree / Designation</label>
-            <input type="text" name="degree_designation_instructor" class="form-control" value="N/A">
-        </div>
-    </div>
+        <button type="submit" class="btn-register" id="submitBtn" disabled>REGISTER</button>
 
-    <!-- STUDENT FIELDS -->
-    <div class="student-fields">
-        <div class="mb-3">
-            <label class="form-label">School ID</label>
-            <input type="text" name="school_id" class="form-control">
-        </div>
+        <p class="text-center mt-3 mb-0">
+            <a href="login.php" class="text-info" style="font-size:.88rem;">Already have an account? Login</a>
+        </p>
 
-        <div class="mb-3">
-            <label class="form-label">Facebook Name</label>
-            <input type="text" name="facebook_name" class="form-control">
-        </div>
+    </form>
+<?php endif; ?>
 
-        <div class="mb-3">
-            <label class="form-label">Phone Number</label>
-            <input type="text" name="phone_number" class="form-control">
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label">Year Level</label>
-            <select name="year_level" class="form-select">
-                <option value="">-- Select Year Level --</option>
-                <?php foreach($studentYears as $y): ?>
-                    <option value="<?= $y ?>"><?= $y ?></option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label">Block</label>
-            <select name="block" class="form-select">
-                <option value="">-- Select Block --</option>
-                <?php foreach($studentBlocks as $b): ?>
-                    <option value="<?= $b ?>"><?= $b ?></option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-    </div>
-
-    <button type="submit" class="btn btn-primary mb-2">Register</button>
-
-    <div class="d-flex gap-2">
-        <button type="reset" class="btn btn-secondary w-50">Clear</button>
-        <a href="login.php" class="btn btn-outline-success w-50">Back to Login</a>
-    </div>
-
-</form>
-</div>
+</div><!-- /container-box -->
 
 <script>
-// (NO CHANGES — your JS remains)
-const roleSelect = document.getElementById("role");
+const roleSelect       = document.getElementById('roleSelect');
+const instructorFields = document.getElementById('instructorFields');
+const studentFields    = document.getElementById('studentFields');
+const submitBtn        = document.getElementById('submitBtn');
+const form             = document.getElementById('regForm');
 
-const fields = {
-    common: document.querySelectorAll(".common-field"),
-    admin: document.querySelector(".admin-fields"),
-    instructor: document.querySelector(".instructor-fields"),
-    student: document.querySelector(".student-fields")
-};
-
-function hideAll() {
-    fields.common.forEach(el => el.style.display = "none");
-    fields.admin.style.display = "none";
-    fields.instructor.style.display = "none";
-    fields.student.style.display = "none";
-    document.querySelectorAll("input, select").forEach(el => el.required = false);
+function toggleFields() {
+    const v = roleSelect.value;
+    instructorFields.style.display = v === 'INSTRUCTOR' ? 'block' : 'none';
+    studentFields.style.display    = v === 'STUDENT'    ? 'block' : 'none';
+    validate();
 }
 
-function showCommon() {
-    fields.common.forEach(el => {
-        el.style.display = "block";
-        el.querySelectorAll("input, select").forEach(x => x.required = true);
-    });
+function validate() {
+    const v = roleSelect.value;
+    let ok = false;
+
+    if (v === 'INSTRUCTOR') {
+        const fn = form.querySelector('#instructorFields input[name="firstname"]').value.trim();
+        const sn = form.querySelector('#instructorFields input[name="surname"]').value.trim();
+        const un = form.querySelector('input[name="username"]').value.trim();
+        const pw = document.getElementById('pw_i').value;
+        const cp = document.getElementById('cpw_i').value;
+        ok = fn && sn && un && pw.length >= 6 && pw === cp;
+    } else if (v === 'STUDENT') {
+        const fn  = form.querySelector('#studentFields input[name="firstname"]').value.trim();
+        const sn  = form.querySelector('#studentFields input[name="surname"]').value.trim();
+        const sid = form.querySelector('input[name="school_id"]').value.trim();
+        const yl  = form.querySelector('select[name="year_level"]').value;
+        const bl  = form.querySelector('select[name="block"]').value;
+        const pw  = document.getElementById('pw_s').value;
+        const cp  = document.getElementById('cpw_s').value;
+        ok = fn && sn && sid && yl && bl && pw.length >= 6 && pw === cp;
+    }
+
+    submitBtn.disabled = !ok;
 }
 
-roleSelect.addEventListener("change", () => {
-    hideAll();
-    let role = roleSelect.value;
+roleSelect.addEventListener('change', toggleFields);
+form && form.addEventListener('input', validate);
+toggleFields();
 
-    if (!role) return;
-
-    showCommon();
-
-    if (role === "ADMIN") {
-        fields.admin.style.display = "block";
-        fields.admin.querySelectorAll("input, select").forEach(x => x.required = true);
-    }
-    else if (role === "INSTRUCTOR") {
-        fields.instructor.style.display = "block";
-        fields.instructor.querySelectorAll("input, select").forEach(x => x.required = true);
-    }
-    else if (role === "STUDENT") {
-        fields.student.style.display = "block";
-        fields.student.querySelectorAll("input, select").forEach(x => x.required = true);
-    }
-});
-
-hideAll();
+// Pre-select role if PHP sent back a value
+roleSelect.dispatchEvent(new Event('change'));
 </script>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
