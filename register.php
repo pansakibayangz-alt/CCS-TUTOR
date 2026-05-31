@@ -375,8 +375,10 @@ body::before {
                         <span class="icon-wrap"><i class="bi bi-mortarboard"></i></span>
                         <select name="year_level" class="form-select">
                             <option value="">-- Select --</option>
-                            <?php foreach(['1st Year','2nd Year','3rd Year','4th Year'] as $y): ?>
-                                <option value="<?= $y ?>" <?= ($_POST['year_level']??'')===$y?'selected':'' ?>><?= $y ?></option>
+                            <?php 
+                            $yearOptions = ['1'=>'1st Year','2'=>'2nd Year','3'=>'3rd Year','4'=>'4th Year'];
+                            foreach($yearOptions as $val => $label): ?>
+                                <option value="<?= $val ?>" <?= ($_POST['year_level']??'')===$val?'selected':'' ?>><?= $label ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -387,7 +389,7 @@ body::before {
                         <span class="icon-wrap"><i class="bi bi-collection"></i></span>
                         <select name="block" class="form-select">
                             <option value="">-- Select --</option>
-                            <?php foreach(['A','B','C','D','E'] as $b): ?>
+                            <?php foreach(['A','B','C','D','E','F'] as $b): ?>
                                 <option value="<?= $b ?>" <?= ($_POST['block']??'')===$b?'selected':'' ?>><?= $b ?></option>
                             <?php endforeach; ?>
                         </select>
