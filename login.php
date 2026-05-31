@@ -9,11 +9,13 @@ $adminQuery = $pdo->prepare("SELECT username, password FROM admin ORDER BY usern
 $adminQuery->execute();
 $admins = $adminQuery->fetchAll(PDO::FETCH_ASSOC);
 
-$instructorQuery = $pdo->prepare("SELECT username, password FROM instructor ORDER BY username");
+/* Only fetch APPROVED instructors for login check */
+$instructorQuery = $pdo->prepare("SELECT username, password, status, rejection_reason FROM instructor WHERE status = 'approved' ORDER BY username");
 $instructorQuery->execute();
 $instructors = $instructorQuery->fetchAll(PDO::FETCH_ASSOC);
 
-$studentQueryAll = $pdo->query("SELECT school_id FROM students");
+/* Only fetch APPROVED students for role availability check */
+$studentQueryAll = $pdo->query("SELECT school_id FROM students WHERE status = 'approved'");
 $students = $studentQueryAll->fetchAll(PDO::FETCH_ASSOC);
 
 /* Role availability */
@@ -70,24 +72,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     /* INSTRUCTOR */
-    elseif ($role === 'INSTRUCTOR' && $roleExists['INSTRUCTOR']) {
+    elseif ($role === 'INSTRUCTOR') {
         $username = trim($_POST['instructor_username'] ?? '');
         $password = trim($_POST['instructor_password'] ?? '');
         $oldValues['instructor_username'] = $username;
         $oldValues['instructor_password'] = $password;
 
-        $instructorUser = null;
-        foreach ($instructors as $i) {
-            if ($i['username'] === $username) {
-                $instructorUser = $i;
-                break;
-            }
-        }
+        /* Check ALL instructors (any status) for proper error messages */
+        $stmtAny = $pdo->prepare("SELECT username, password, status, rejection_reason FROM instructor WHERE username = ?");
+        $stmtAny->execute([$username]);
+        $instructorUser = $stmtAny->fetch(PDO::FETCH_ASSOC);
 
         if (!$instructorUser) {
             $loginError = "Instructor username is incorrect.";
         } elseif (!password_verify($password, $instructorUser['password'])) {
             $loginError = "Instructor password is incorrect.";
+        } elseif ($instructorUser['status'] === 'pending') {
+            $loginError = "Your account is still <strong>pending approval</strong>. Please wait for the Admin to approve your registration.";
+        } elseif ($instructorUser['status'] === 'rejected') {
+            $reason = htmlspecialchars($instructorUser['rejection_reason'] ?? 'No reason provided.');
+            $loginError = "Your account has been <strong>rejected</strong>. Reason: <em>$reason</em>";
         } else {
             session_start();
             $_SESSION['role'] = 'INSTRUCTOR';
@@ -98,13 +102,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     /* STUDENT */
-    elseif ($role === 'STUDENT' && $roleExists['STUDENT']) {
+    elseif ($role === 'STUDENT') {
         $schoolId = trim($_POST['school_id'] ?? '');
         $password = trim($_POST['student_password'] ?? '');
         $oldValues['school_id'] = $schoolId;
         $oldValues['student_password'] = $password;
 
-        $studentQuery = $pdo->prepare("SELECT password FROM students WHERE school_id = ?");
+        /* Check ALL students (any status) for proper error messages */
+        $studentQuery = $pdo->prepare("SELECT password, status, rejection_reason FROM students WHERE school_id = ?");
         $studentQuery->execute([$schoolId]);
         $student = $studentQuery->fetch(PDO::FETCH_ASSOC);
 
@@ -112,6 +117,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $loginError = "School ID is incorrect.";
         } elseif (!password_verify($password, $student['password'])) {
             $loginError = "Password is incorrect.";
+        } elseif ($student['status'] === 'pending') {
+            $loginError = "Your account is still <strong>pending approval</strong>. Please wait for the Admin to approve your registration.";
+        } elseif ($student['status'] === 'rejected') {
+            $reason = htmlspecialchars($student['rejection_reason'] ?? 'No reason provided.');
+            $loginError = "Your account has been <strong>rejected</strong>. Reason: <em>$reason</em>";
         } else {
             session_start();
             $_SESSION['role'] = 'STUDENT';
@@ -293,7 +303,7 @@ body::before {
 	<p class="text-light mb-3">Access your account</p>
 
     <?php if($loginError): ?>
-        <div class="alert alert-danger text-center"><?= htmlspecialchars($loginError) ?></div>
+        <div class="alert alert-danger text-center"><?= $loginError ?></div>
     <?php endif; ?>
 
     <form action="" method="POST">
