@@ -45,16 +45,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     /* ── STUDENT REGISTRATION ── */
     } elseif ($role === 'STUDENT') {
-        $firstname    = trim($_POST['firstname']    ?? '');
-        $middlename   = trim($_POST['middlename']   ?? '');
-        $surname      = trim($_POST['surname']      ?? '');
-        $school_id    = trim($_POST['school_id']    ?? '');
-        $phone_number = trim($_POST['phone_number'] ?? '');
-        $facebook     = trim($_POST['facebook_name']?? '');
-        $year_level   = trim($_POST['year_level']   ?? '');
-        $block        = trim($_POST['block']         ?? '');
-        $password     = $_POST['password']           ?? '';
-        $confirm      = $_POST['confirm_password']   ?? '';
+        $firstname    = trim($_POST['s_firstname']    ?? '');
+        $middlename   = trim($_POST['s_middlename']   ?? '');
+        $surname      = trim($_POST['s_surname']      ?? '');
+        $school_id    = trim($_POST['school_id']      ?? '');
+        $phone_number = trim($_POST['phone_number']   ?? '');
+        $facebook     = trim($_POST['facebook_name']  ?? '');
+        $year_level   = trim($_POST['s_year_level']   ?? '');
+        $block        = trim($_POST['s_block']         ?? '');
+        $password     = $_POST['password']             ?? '';
+        $confirm      = $_POST['confirm_password']     ?? '';
 
         if (!$firstname || !$surname || !$school_id || !$year_level || !$block || !$password) {
             $error = "Please fill in all required fields.";
@@ -335,16 +335,16 @@ body::before {
                     <label class="form-label">First Name <span style="color:#f87171">*</span></label>
                     <div class="pos-rel">
                         <span class="icon-wrap"><i class="bi bi-person"></i></span>
-                        <input type="text" name="firstname" class="form-control"
-                               value="<?= htmlspecialchars($_POST['firstname'] ?? '') ?>" placeholder="Juan">
+                        <input type="text" name="s_firstname" class="form-control"
+                               value="<?= htmlspecialchars($_POST['s_firstname'] ?? '') ?>" placeholder="Juan">
                     </div>
                 </div>
                 <div class="col-6">
                     <label class="form-label">Surname <span style="color:#f87171">*</span></label>
                     <div class="pos-rel">
                         <span class="icon-wrap"><i class="bi bi-person"></i></span>
-                        <input type="text" name="surname" class="form-control"
-                               value="<?= htmlspecialchars($_POST['surname'] ?? '') ?>" placeholder="dela Cruz">
+                        <input type="text" name="s_surname" class="form-control"
+                               value="<?= htmlspecialchars($_POST['s_surname'] ?? '') ?>" placeholder="dela Cruz">
                     </div>
                 </div>
             </div>
@@ -354,8 +354,8 @@ body::before {
                     <label class="form-label">Middle Name</label>
                     <div class="pos-rel">
                         <span class="icon-wrap"><i class="bi bi-person"></i></span>
-                        <input type="text" name="middlename" class="form-control"
-                               value="<?= htmlspecialchars($_POST['middlename'] ?? '') ?>" placeholder="(optional)">
+                        <input type="text" name="s_middlename" class="form-control"
+                               value="<?= htmlspecialchars($_POST['s_middlename'] ?? '') ?>" placeholder="(optional)">
                     </div>
                 </div>
                 <div class="col-6">
@@ -373,12 +373,12 @@ body::before {
                     <label class="form-label">Year Level <span style="color:#f87171">*</span></label>
                     <div class="pos-rel">
                         <span class="icon-wrap"><i class="bi bi-mortarboard"></i></span>
-                        <select name="year_level" class="form-select">
+                        <select name="s_year_level" class="form-select">
                             <option value="">-- Select --</option>
                             <?php 
                             $yearOptions = ['1'=>'1st Year','2'=>'2nd Year','3'=>'3rd Year','4'=>'4th Year'];
                             foreach($yearOptions as $val => $label): ?>
-                                <option value="<?= $val ?>" <?= ($_POST['year_level']??'')===$val?'selected':'' ?>><?= $label ?></option>
+                                <option value="<?= $val ?>" <?= ($_POST['s_year_level']??'')===$val?'selected':'' ?>><?= $label ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -387,10 +387,10 @@ body::before {
                     <label class="form-label">Block <span style="color:#f87171">*</span></label>
                     <div class="pos-rel">
                         <span class="icon-wrap"><i class="bi bi-collection"></i></span>
-                        <select name="block" class="form-select">
+                        <select name="s_block" class="form-select">
                             <option value="">-- Select --</option>
                             <?php foreach(['A','B','C','D','E','F'] as $b): ?>
-                                <option value="<?= $b ?>" <?= ($_POST['block']??'')===$b?'selected':'' ?>><?= $b ?></option>
+                                <option value="<?= $b ?>" <?= ($_POST['s_block']??'')===$b?'selected':'' ?>><?= $b ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -471,11 +471,11 @@ function validate() {
         const cp = document.getElementById('cpw_i').value;
         ok = fn && sn && un && pw.length >= 6 && pw === cp;
     } else if (v === 'STUDENT') {
-        const fn  = form.querySelector('#studentFields input[name="firstname"]').value.trim();
-        const sn  = form.querySelector('#studentFields input[name="surname"]').value.trim();
+        const fn  = form.querySelector('input[name="s_firstname"]').value.trim();
+        const sn  = form.querySelector('input[name="s_surname"]').value.trim();
         const sid = form.querySelector('input[name="school_id"]').value.trim();
-        const yl  = form.querySelector('select[name="year_level"]').value;
-        const bl  = form.querySelector('select[name="block"]').value;
+        const yl  = form.querySelector('select[name="s_year_level"]').value;
+        const bl  = form.querySelector('select[name="s_block"]').value;
         const pw  = document.getElementById('pw_s').value;
         const cp  = document.getElementById('cpw_s').value;
         ok = fn && sn && sid && yl && bl && pw.length >= 6 && pw === cp;
