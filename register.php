@@ -69,15 +69,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = "School ID '$school_id' is already registered.";
             } else {
                 $hash = password_hash($password, PASSWORD_DEFAULT);
+                
+                // Generate a secure unique key for the database column
+                $unique_key = bin2hex(random_bytes(16));
+                
                 $stmt = $pdo->prepare("
                     INSERT INTO students
                         (firstname, middlename, surname, school_id, phone_number, facebook_name,
-                         year_level, block, password, status, registered_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())
+                         year_level, block, password, status, registered_at, unique_key)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW(), ?)
                 ");
                 $stmt->execute([
                     $firstname, $middlename, $surname, $school_id,
-                    $phone_number, $facebook, $year_level, $block, $hash
+                    $phone_number, $facebook, $year_level, $block, $hash, $unique_key
                 ]);
                 $success = "STUDENT";
             }
@@ -220,7 +224,6 @@ body::before {
 <div class="container-box">
 
 <?php if ($success): ?>
-    <!-- ── SUCCESS STATE ── -->
     <div class="success-box">
         <i class="bi bi-hourglass-split"></i>
         <h4>Registration Submitted!</h4>
@@ -236,7 +239,6 @@ body::before {
     </div>
 
 <?php else: ?>
-    <!-- ── FORM ── -->
     <h3 class="text-white fw-bold text-center mb-1" style="font-size:28px;">REGISTER</h3>
     <p class="text-light text-center mb-3" style="font-size:.85rem;">Create your account</p>
 
@@ -246,7 +248,6 @@ body::before {
 
     <form method="POST" id="regForm">
 
-        <!-- ROLE SELECT -->
         <div class="mb-3">
             <label class="form-label">Select Role <span style="color:#f87171">*</span></label>
             <div class="pos-rel">
@@ -259,7 +260,6 @@ body::before {
             </div>
         </div>
 
-        <!-- ── INSTRUCTOR FIELDS ── -->
         <div id="instructorFields" class="dynamic-fields">
 
             <div class="row g-2 mb-2">
@@ -327,7 +327,6 @@ body::before {
             </div>
         </div>
 
-        <!-- ── STUDENT FIELDS ── -->
         <div id="studentFields" class="dynamic-fields">
 
             <div class="row g-2 mb-2">
@@ -443,9 +442,7 @@ body::before {
     </form>
 <?php endif; ?>
 
-</div><!-- /container-box -->
-
-<script>
+</div><script>
 const roleSelect       = document.getElementById('roleSelect');
 const instructorFields = document.getElementById('instructorFields');
 const studentFields    = document.getElementById('studentFields');
