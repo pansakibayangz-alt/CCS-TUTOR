@@ -14,6 +14,14 @@ $stmt = $pdo->prepare("SELECT * FROM admin WHERE username = ?");
 $stmt->execute([$username]);
 $admin = $stmt->fetch(PDO::FETCH_ASSOC);
 
+// Count pending approvals for badge
+$pendingCount = 0;
+try {
+    $pi = $pdo->query("SELECT COUNT(*) FROM instructor WHERE status='pending'")->fetchColumn();
+    $ps = $pdo->query("SELECT COUNT(*) FROM students WHERE status='pending'")->fetchColumn();
+    $pendingCount = (int)$pi + (int)$ps;
+} catch(Exception $e) { $pendingCount = 0; }
+
 // VMGO gradient headers
 $gradients = [
     'CORE VALUES'              => 'linear-gradient(135deg, #8B0000, #FFD700)',
@@ -428,6 +436,14 @@ body {
         <li class="nav-item"><a class="nav-link" href="admin_about.php">About</a></li>
         <li class="nav-item"><a class="nav-link" href="admin_manage_instructors.php">Instructors</a></li>
         <li class="nav-item"><a class="nav-link" href="admin_manage_students.php">Students</a></li>
+        <li class="nav-item">
+            <a class="nav-link" href="admin_pending_approvals.php">
+                Approvals
+                <?php if($pendingCount > 0): ?>
+                    <span style="background:#f59e0b;color:#000;font-weight:700;font-size:.72rem;padding:2px 8px;border-radius:20px;margin-left:4px;"><?= $pendingCount ?></span>
+                <?php endif; ?>
+            </a>
+        </li>
         <li class="nav-item"><a class="nav-link" href="admin_feedback.php">Feedback</a></li>
         <li class="nav-item"><a class="nav-link" href="logout.php">Logout</a></li>
       </ul>
