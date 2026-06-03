@@ -76,7 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['role'])) {
 
         if (!$firstname || !$surname || !$school_id || !$year_level || !$block || !$password) {
             $error = "Please fill in all required fields.";
-        } elseif (!preg_match('/^SC-\d{2}-[A-Z]-\d{5}$/i', $school_id)) {
+        } elseif (!preg_match('/^SC-\d{2}-[A-Za-z]-\d{5}$/', $school_id)) {
             $error = "School ID must follow the format: SC-YY-L-NNNNN (e.g. SC-22-A-00129).";
         } elseif ($phone_number && !preg_match('/^09\d{9}$/', $phone_number)) {
             $error = "Contact number must be in the format: 09XXXXXXXXX (11 digits).";
@@ -452,9 +452,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['role'])) {
                                 <div class="col-12">
                                     <label class="form-label">School ID <span class="text-danger">*</span></label>
                                     <div class="position-relative">
-                                        <input type="text" name="school_id" class="form-control" value="<?= htmlspecialchars($_POST['school_id'] ?? '') ?>" placeholder="e.g. SC-22-A-00129">
+                                        <input type="text" name="school_id" id="school_id_s" class="form-control" value="<?= htmlspecialchars($_POST['school_id'] ?? '') ?>" placeholder="e.g. SC-22-A-00129">
                                         <i class="bi bi-credit-card-2-front input-icon"></i>
                                     </div>
+                                    <div id="school_id_hint" class="pw-match-msg text-muted"></div>
                                 </div>
                             </div>
                             <div class="row g-3 mb-4">
@@ -588,6 +589,22 @@ if (form && roleSelect && submitBtn) {
         }
     }
 
+    function checkSchoolIdFormat() {
+        const el   = document.getElementById('school_id_s');
+        const hint = document.getElementById('school_id_hint');
+        if (!el || !hint) return;
+        const val = el.value;
+        if (val === '') { hint.textContent = ''; return; }
+        // Format check: SC-YY-L-NNNNN (e.g. SC-22-A-00129)
+        if (/^SC-\d{2}-[A-Za-z]-\d{5}$/.test(val)) {
+            hint.textContent = '✓ Valid format';
+            hint.className = 'pw-match-msg text-success';
+        } else {
+            hint.textContent = 'Format must be SC-YY-L-NNNNN (e.g. SC-22-A-00129)';
+            hint.className = 'pw-match-msg text-danger';
+        }
+    }
+
     function validate() {
         const v = roleSelect.value;
         let ok = false;
@@ -595,7 +612,7 @@ if (form && roleSelect && submitBtn) {
         if (v === 'INSTRUCTOR') {
             const fn = form.querySelector('#instructorFields input[name="firstname"]')?.value.trim() ?? '';
             const sn = form.querySelector('#instructorFields input[name="surname"]')?.value.trim() ?? '';
-            const em = form.querySelector('#instructorFields input[name="email"]')?.value.trim() ?? ''; // FIX: Added Email to JS Validation
+            const em = form.querySelector('#instructorFields input[name="email"]')?.value.trim() ?? '';
             const un = form.querySelector('#instructorFields input[name="username"]')?.value.trim() ?? '';
             const pw = document.getElementById('pw_i')?.value ?? '';
             const cp = document.getElementById('cpw_i')?.value ?? '';
@@ -613,8 +630,13 @@ if (form && roleSelect && submitBtn) {
             const bl  = form.querySelector('select[name="s_block"]')?.value ?? '';
             const pw  = document.getElementById('pw_s')?.value ?? '';
             const cp  = document.getElementById('cpw_s')?.value ?? '';
-            ok = !!(fn && sn && sid && yl && bl && pw.length >= 6 && pw === cp);
+            
+            // Validate against the new SC-22-A-00129 format requirement
+            const isSidValid = /^SC-\d{2}-[A-Za-z]-\d{5}$/.test(sid);
+
+            ok = !!(fn && sn && isSidValid && yl && bl && pw.length >= 6 && pw === cp);
             checkPasswordMatch('pw_s', 'cpw_s', 'pw_match_s');
+            checkSchoolIdFormat(); // Trigger real-time UI hint for School ID
         }
 
         submitBtn.disabled = !ok;
