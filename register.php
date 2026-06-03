@@ -32,8 +32,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['role'])) {
             $error = "Please fill in all required fields.";
         } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $error = "Please enter a valid email address.";
-        } elseif (!preg_match('/^[a-zA-Z0-9_]{3,30}$/', $username)) {
-            $error = "Username must be 3–30 characters (letters, numbers, underscore only).";
+      } elseif (!preg_match('/^SC-\d{2}-[A-Z]-\d{5}$/i', $school_id)) {
+            $error = "School ID must follow the format: SC-YY-X-NNNNN (e.g. SC-22-A-00129).";
         } elseif (strlen($password) < 6) {
             $error = "Password must be at least 6 characters.";
         } elseif ($password !== $confirm) {
