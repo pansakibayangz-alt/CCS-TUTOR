@@ -30,7 +30,7 @@ $sqlCourses = "
     SELECT DISTINCT COALESCE(l.course_id, 0) AS course_id, COALESCE(l.course_name, '(Unassigned)') AS course_name
     FROM lessons l
     WHERE l.instructor_id = ?
-    ORDER BY l.course_name
+    ORDER BY course_name
 ";
 $stmtCourses = $pdo->prepare($sqlCourses);
 $stmtCourses->execute([$instructor_id]);
