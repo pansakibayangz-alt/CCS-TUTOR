@@ -123,8 +123,9 @@ body{
     color: var(--muted);
     margin:0;
     min-height:100vh;
-	
-	.container {
+}
+
+.container {
     padding-bottom: 120px !important;
 }
 
@@ -301,10 +302,10 @@ footer {
 }
 
 /* Slight spacing between rows */
-#assessmensTable tbody tr:not(:last-child) {
+#assessmentsTable tbody tr:not(:last-child) {
     margin-bottom: 6px;
 }
-/* ⭐ EMPHASIZED GLASS TABLE EDGES (SAME AS MANAGE LESSONS) */
+/* ⭐ EMPHASIZED GLASS TABLE EDGES */
 #assessmentsTable {
     border-collapse: separate !important;
     border-spacing: 0 12px;
@@ -402,7 +403,6 @@ footer {
   </div>
 </nav>
 
-<!-- LIVE DATE & TIME -->
 <div id="liveDateTimeBar">Loading date & time...</div>
 
 <div class="container">
@@ -441,7 +441,7 @@ footer {
             $year_levels = array_unique(array_map(fn($x) => $x['year_level'], $groups));
             sort($year_levels);
           ?>
-          <select name="year_level" class="form-select input-light" required>
+          <select name="year_level" id="yearSelect" class="form-select input-light" required>
             <option value="">-- Select --</option>
             <?php foreach($year_levels as $y): ?>
               <option value="<?= htmlspecialchars($y) ?>"><?= htmlspecialchars($y) ?></option>
@@ -454,27 +454,23 @@ footer {
             $blocks = array_unique(array_map(fn($x)=>$x['block'], $groups));
             sort($blocks);
           ?>
-          <select name="block" class="form-select input-light" required>
+          <select name="block" id="blockSelect" class="form-select input-light" required>
             <option value="">-- Select --</option>
             <?php foreach($blocks as $b) echo "<option>$b</option>"; ?>
           </select>
         </div>
-        <div class="col-md-4">
+        
+        <div class="col-md-4" id="courseContainer" style="display: none;">
           <label class="form-label">Course</label>
           <select name="course_id" id="courseSelect" class="form-select input-light" required>
             <option value="">-- Choose --</option>
-            <?php foreach($courses as $c): ?>
-              <option value="<?= $c['course_id'] ?>"><?= htmlspecialchars($c['course_name']); ?></option>
-            <?php endforeach; ?>
           </select>
         </div>
-        <div class="col-md-4">
+        
+        <div class="col-md-4" id="lessonContainer" style="display: none;">
           <label class="form-label">Lesson</label>
           <select name="lesson_id" id="lessonSelect" class="form-select input-light" required>
             <option value="">-- Choose --</option>
-            <?php foreach($lessons as $l): ?>
-              <option value="<?= $l['lesson_id']; ?>"><?= htmlspecialchars($l['lesson_title']); ?> (<?= htmlspecialchars($l['year_level'].'-'.$l['block']); ?>)</option>
-            <?php endforeach; ?>
           </select>
         </div>
 
@@ -517,8 +513,7 @@ footer {
       <input type="text" id="assessmentSearch" class="form-control input-light" placeholder="Search assessments...">
     </div>
 
-    <!-- Existing Assessments Table -->
-		<div class="table-responsive">
+    <div class="table-responsive">
 		  <table class="table table-sm table-borderless table-light-custom text-white" id="assessmentsTable">
 			<thead>
 			  <tr>
@@ -552,7 +547,7 @@ footer {
   </div>
 </div>
 
-<<footer class="text-center py-3" style="
+<footer class="text-center py-3" style="
     position: fixed;
     bottom: 0;
     width: 100%;
@@ -627,16 +622,21 @@ assessmentSearchInput.addEventListener('input', function() {
     });
 });
 
-// Cascading dropdowns
+// Cascading dropdowns & Dynamic Visibility
+const courseContainer = document.getElementById('courseContainer');
+const lessonContainer = document.getElementById('lessonContainer');
 const courseSelect = document.getElementById('courseSelect');
 const lessonSelect = document.getElementById('lessonSelect');
-const yearSelect = document.querySelector('select[name="year_level"]');
-const blockSelect = document.querySelector('select[name="block"]');
+const yearSelect = document.getElementById('yearSelect');
+const blockSelect = document.getElementById('blockSelect');
 
 function loadCoursesAndLessons() {
     const year = yearSelect.value;
     const block = blockSelect.value;
+    
     if (!year || !block) {
+        courseContainer.style.display = 'none';
+        lessonContainer.style.display = 'none';
         courseSelect.innerHTML = '<option value="">-- Choose --</option>';
         lessonSelect.innerHTML = '<option value="">-- Choose --</option>';
         return;
@@ -652,6 +652,9 @@ function loadCoursesAndLessons() {
                 opt.textContent = c.course_name;
                 courseSelect.appendChild(opt);
             });
+            // Show course container once year and block are selected
+            courseContainer.style.display = 'block';
+            lessonContainer.style.display = 'none'; // Keep lesson hidden until course is selected
             lessonSelect.innerHTML = '<option value="">-- Choose --</option>';
         });
 }
@@ -661,11 +664,15 @@ courseSelect.addEventListener('change', function() {
     const year = yearSelect.value;
     const block = blockSelect.value;
 
-    lessonSelect.innerHTML = '<option value="">-- Loading lessons --</option>';
     if (!courseId) {
+        lessonContainer.style.display = 'none';
         lessonSelect.innerHTML = '<option value="">-- Choose --</option>';
         return;
     }
+
+    lessonSelect.innerHTML = '<option value="">-- Loading lessons --</option>';
+    // Show lesson container once course is selected
+    lessonContainer.style.display = 'block'; 
 
     fetch(`get_lessons.php?course_id=${courseId}&year_level=${year}&block=${block}`)
         .then(res => res.json())
@@ -674,7 +681,7 @@ courseSelect.addEventListener('change', function() {
             data.forEach(l => {
                 const opt = document.createElement('option');
                 opt.value = l.lesson_id;
-                                opt.textContent = `${l.lesson_title} (${l.year_level}-${l.block})`;
+                opt.textContent = `${l.lesson_title} (${l.year_level}-${l.block})`;
                 lessonSelect.appendChild(opt);
             });
         });
@@ -710,4 +717,3 @@ updateDateTime();
 
 </body>
 </html>
-
