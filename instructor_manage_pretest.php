@@ -69,8 +69,7 @@ $groups = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // 2️⃣ Fetch courses for this instructor only
 $cstmt = $pdo->prepare("
-    SELECT * 
-    FROM courses 
+    SELECT * FROM courses 
     WHERE instructor_id = ? 
     ORDER BY category, course_name
 ");
@@ -79,8 +78,7 @@ $courses = $cstmt->fetchAll(PDO::FETCH_ASSOC);
 
 // 3️⃣ Fetch lessons for this instructor only
 $lstmt = $pdo->prepare("
-    SELECT * 
-    FROM lessons 
+    SELECT * FROM lessons 
     WHERE instructor_id = ? 
     ORDER BY created_at DESC
 ");
@@ -126,8 +124,8 @@ body{
     color: var(--muted);
     margin:0;
     min-height:100vh;
-	
-	.container {
+}
+.container {
     padding-bottom: 120px !important;
 }
 
@@ -377,7 +375,6 @@ footer {
 </head>
 <body>
 
-<!-- NAVBAR -->
 <nav class="navbar navbar-expand-lg navbar-custom">
   <div class="container-fluid" style="max-width:1200px; margin:0 auto;">
    <a class="navbar-brand d-flex align-items-center gap-2" href="instructor_dashboard.php">
@@ -406,7 +403,6 @@ footer {
   </div>
 </nav>
 
-<!-- LIVE DATE & TIME -->
 <div id="liveDateTimeBar">Loading date & time...</div>
 
 <div class="container">
@@ -438,15 +434,15 @@ footer {
         <div class="col-md-2">
           <label class="form-label">Year Level</label>
           <?php
-			$year_levels = array_unique(array_map(fn($x) => $x['year_level'], $groups));
-			sort($year_levels); // optional, to order 1,2,3,4
-			?>
-			<select name="year_level" class="form-select input-light" required>
-				<option value="">-- Select --</option>
-				<?php foreach($year_levels as $y): ?>
-					<option value="<?= htmlspecialchars($y) ?>"><?= htmlspecialchars($y) ?></option>
-				<?php endforeach; ?>
-			</select>
+            $year_levels = array_unique(array_map(fn($x) => $x['year_level'], $groups));
+            sort($year_levels);
+            ?>
+            <select name="year_level" class="form-select input-light" required>
+                <option value="">-- Select --</option>
+                <?php foreach($year_levels as $y): ?>
+                    <option value="<?= htmlspecialchars($y) ?>"><?= htmlspecialchars($y) ?></option>
+                <?php endforeach; ?>
+            </select>
         </div>
         <div class="col-md-2">
           <label class="form-label">Block</label>
@@ -511,48 +507,47 @@ footer {
     </form>
 
     <hr>
-	<h5>Existing Pretests</h5>
+    <h5>Existing Pretests</h5>
 
-	<div class="mb-3">
-	  <input type="text" id="pretestSearch" class="form-control input-light" placeholder="Search by Course, Lesson, Year/Block, or Type...">
-	</div>
+    <div class="mb-3">
+      <input type="text" id="pretestSearch" class="form-control input-light" placeholder="Search by Course, Lesson, Year/Block, or Type...">
+    </div>
 
-	<div class="table-responsive">
-	  <table class="table table-sm table-borderless table-light-custom text-white" id="pretestsTable">
-		<thead>
-		  <tr>
-			<th>Course</th>
-			<th>Lesson</th>
-			<th>Year-Level</th>
-			<th>Block</th>
-			<th>Type</th>
-			<th>Instructions</th>
-			<th>Actions</th>
-		  </tr>
-		</thead>
-		<tbody>
-		<?php foreach($existingPretests as $p): ?>
-		  <tr>
-			<td><?= htmlspecialchars($p['course_name']); ?></td>
-			<td><?= htmlspecialchars($p['lesson_title']); ?></td>
-			<td><?= htmlspecialchars($p['year_level']); ?></td>
-			<td><?= htmlspecialchars($p['block']); ?></td>
-			<td><?= htmlspecialchars($p['pretest_type']); ?></td>
-			<td><?= htmlspecialchars($p['instructions']); ?></td>
-			<td>
-			  <a class="btn btn-sm btn-warning" href="edit_pretest.php?id=<?= $p['pretest_id']; ?>">Edit</a>
-			  <a class="btn btn-sm btn-danger" href="delete_pretest.php?id=<?= $p['pretest_id']; ?>" onclick="return confirm('Delete this pretest?');">Delete</a>
-			</td>
-		  </tr>
-		<?php endforeach; ?>
-		</tbody>
-	  </table>
-	</div>
+    <div class="table-responsive">
+      <table class="table table-sm table-borderless table-light-custom text-white" id="pretestsTable">
+        <thead>
+          <tr>
+            <th>Course</th>
+            <th>Lesson</th>
+            <th>Year-Level</th>
+            <th>Block</th>
+            <th>Type</th>
+            <th>Instructions</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+        <?php foreach($existingPretests as $p): ?>
+          <tr>
+            <td><?= htmlspecialchars($p['course_name']); ?></td>
+            <td><?= htmlspecialchars($p['lesson_title']); ?></td>
+            <td><?= htmlspecialchars($p['year_level']); ?></td>
+            <td><?= htmlspecialchars($p['block']); ?></td>
+            <td><?= htmlspecialchars($p['pretest_type']); ?></td>
+            <td><?= htmlspecialchars($p['instructions']); ?></td>
+            <td>
+              <a class="btn btn-sm btn-warning" href="edit_pretest.php?id=<?= $p['pretest_id']; ?>">Edit</a>
+              <a class="btn btn-sm btn-danger" href="delete_pretest.php?id=<?= $p['pretest_id']; ?>" onclick="return confirm('Delete this pretest?');">Delete</a>
+            </td>
+          </tr>
+        <?php endforeach; ?>
+        </tbody>
+      </table>
+    </div>
 
   </div>
 </div>
 
-<!-- FOOTER -->
 <footer class="text-center py-3" style="
     position: fixed;
     bottom: 0;
@@ -567,6 +562,7 @@ footer {
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
 <script>
 // Generate pretest items
 function createItemRow(index, type) {
@@ -622,66 +618,58 @@ pretestSearchInput.addEventListener('input', function() {
         row.style.display = cellsText.includes(filter) ? '' : 'none';
     });
 });
+</script>
 
-// Cascading dropdowns: Year/Block → Courses → Lessons
+<script>
+// --- COMPLETELY REWRITTEN FILTERING LOGIC ---
+// We pass the PHP arrays safely into JavaScript so we can filter instantly on the client-side
+// without relying on buggy external fetch/AJAX calls that cause the dropdowns to empty out!
+const allCourses = <?php echo json_encode($courses, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
+const allLessons = <?php echo json_encode($lessons, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
+
 const courseSelect = document.getElementById('courseSelect');
 const lessonSelect = document.getElementById('lessonSelect');
 const yearSelect = document.querySelector('select[name="year_level"]');
 const blockSelect = document.querySelector('select[name="block"]');
 
-function loadCoursesAndLessons() {
+function updateLessonDropdown() {
     const year = yearSelect.value;
     const block = blockSelect.value;
+    const courseId = courseSelect.value;
 
-    if (!year || !block) {
-        courseSelect.innerHTML = '<option value="">-- Choose --</option>';
-        lessonSelect.innerHTML = '<option value="">-- Choose --</option>';
-        return;
+    // We never empty out courseSelect here, fixing the bug where courses disappear!
+    // We only reset the lesson dropdown
+    lessonSelect.innerHTML = '<option value="">-- Choose --</option>';
+
+    // Filter lessons based on current selections
+    let validLessons = allLessons;
+    
+    if (year) {
+        validLessons = validLessons.filter(l => l.year_level == year);
+    }
+    if (block) {
+        validLessons = validLessons.filter(l => l.block == block);
+    }
+    if (courseId) {
+        validLessons = validLessons.filter(l => l.course_id == courseId);
     }
 
-    // Fetch courses for selected Year-Level & Block
-    fetch(`get_courses.php?year_level=${year}&block=${block}`)
-        .then(res => res.json())
-        .then(data => {
-            courseSelect.innerHTML = '<option value="">-- Choose --</option>';
-            data.forEach(c => {
-                const opt = document.createElement('option');
-                opt.value = c.course_id;
-                opt.textContent = c.course_name;
-                courseSelect.appendChild(opt);
-            });
-            lessonSelect.innerHTML = '<option value="">-- Choose --</option>'; // reset lessons
-        });
+    // Repopulate filtered lessons dynamically
+    validLessons.forEach(l => {
+        const opt = document.createElement('option');
+        opt.value = l.lesson_id;
+        opt.textContent = `${l.lesson_title} (${l.year_level}-${l.block})`;
+        lessonSelect.appendChild(opt);
+    });
 }
 
-// Load lessons for selected course
-courseSelect.addEventListener('change', function() {
-    const courseId = courseSelect.value;
-    const year = yearSelect.value;
-    const block = blockSelect.value;
+// Trigger dropdown updates anytime Year, Block, or Course changes
+yearSelect.addEventListener('change', updateLessonDropdown);
+blockSelect.addEventListener('change', updateLessonDropdown);
+courseSelect.addEventListener('change', updateLessonDropdown);
 
-    lessonSelect.innerHTML = '<option value="">-- Loading lessons --</option>';
-    if (!courseId) {
-        lessonSelect.innerHTML = '<option value="">-- Choose --</option>';
-        return;
-    }
-
-    fetch(`get_lessons.php?course_id=${courseId}&year_level=${year}&block=${block}`)
-        .then(res => res.json())
-        .then(data => {
-            lessonSelect.innerHTML = '<option value="">-- Choose --</option>';
-            data.forEach(l => {
-                const opt = document.createElement('option');
-                opt.value = l.lesson_id;
-                opt.textContent = `${l.lesson_title} (${l.year_level}-${l.block})`;
-                lessonSelect.appendChild(opt);
-            });
-        });
-});
-
-// Trigger course reload when Year-Level or Block changes
-yearSelect.addEventListener('change', loadCoursesAndLessons);
-blockSelect.addEventListener('change', loadCoursesAndLessons);
+// Run on page load just to ensure everything is in sync
+updateLessonDropdown();
 </script>
 
 <script>
@@ -706,7 +694,6 @@ function updateDateTime(){
 setInterval(updateDateTime,1000);
 updateDateTime();
 </script>
-
 
 </body>
 </html>
