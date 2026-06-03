@@ -124,7 +124,6 @@ body{
     margin:0;
     min-height:100vh;
 }
-
 .container {
     padding-bottom: 120px !important;
 }
@@ -305,7 +304,7 @@ footer {
 #assessmentsTable tbody tr:not(:last-child) {
     margin-bottom: 6px;
 }
-/* ⭐ EMPHASIZED GLASS TABLE EDGES */
+/* ⭐ EMPHASIZED GLASS TABLE EDGES (SAME AS MANAGE LESSONS) */
 #assessmentsTable {
     border-collapse: separate !important;
     border-spacing: 0 12px;
@@ -441,7 +440,7 @@ footer {
             $year_levels = array_unique(array_map(fn($x) => $x['year_level'], $groups));
             sort($year_levels);
           ?>
-          <select name="year_level" id="yearSelect" class="form-select input-light" required>
+          <select name="year_level" class="form-select input-light" required>
             <option value="">-- Select --</option>
             <?php foreach($year_levels as $y): ?>
               <option value="<?= htmlspecialchars($y) ?>"><?= htmlspecialchars($y) ?></option>
@@ -454,23 +453,27 @@ footer {
             $blocks = array_unique(array_map(fn($x)=>$x['block'], $groups));
             sort($blocks);
           ?>
-          <select name="block" id="blockSelect" class="form-select input-light" required>
+          <select name="block" class="form-select input-light" required>
             <option value="">-- Select --</option>
             <?php foreach($blocks as $b) echo "<option>$b</option>"; ?>
           </select>
         </div>
-        
-        <div class="col-md-4" id="courseContainer" style="display: none;">
+        <div class="col-md-4">
           <label class="form-label">Course</label>
           <select name="course_id" id="courseSelect" class="form-select input-light" required>
             <option value="">-- Choose --</option>
+            <?php foreach($courses as $c): ?>
+              <option value="<?= $c['course_id'] ?>"><?= htmlspecialchars($c['course_name']); ?></option>
+            <?php endforeach; ?>
           </select>
         </div>
-        
-        <div class="col-md-4" id="lessonContainer" style="display: none;">
+        <div class="col-md-4">
           <label class="form-label">Lesson</label>
           <select name="lesson_id" id="lessonSelect" class="form-select input-light" required>
             <option value="">-- Choose --</option>
+            <?php foreach($lessons as $l): ?>
+              <option value="<?= $l['lesson_id']; ?>"><?= htmlspecialchars($l['lesson_title']); ?> (<?= htmlspecialchars($l['year_level'].'-'.$l['block']); ?>)</option>
+            <?php endforeach; ?>
           </select>
         </div>
 
@@ -621,75 +624,56 @@ assessmentSearchInput.addEventListener('input', function() {
         row.style.display = cellsText.includes(filter) ? '' : 'none';
     });
 });
+</script>
 
-// Cascading dropdowns & Dynamic Visibility
-const courseContainer = document.getElementById('courseContainer');
-const lessonContainer = document.getElementById('lessonContainer');
+<script>
+// --- COMPLETELY REWRITTEN FILTERING LOGIC ---
+// This uses the PHP arrays directly, preventing the bug where course/lesson dropdowns go blank
+const allCourses = <?php echo json_encode($courses, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
+const allLessons = <?php echo json_encode($lessons, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
+
 const courseSelect = document.getElementById('courseSelect');
 const lessonSelect = document.getElementById('lessonSelect');
-const yearSelect = document.getElementById('yearSelect');
-const blockSelect = document.getElementById('blockSelect');
+const yearSelect = document.querySelector('select[name="year_level"]');
+const blockSelect = document.querySelector('select[name="block"]');
 
-function loadCoursesAndLessons() {
+function updateLessonDropdown() {
     const year = yearSelect.value;
     const block = blockSelect.value;
+    const courseId = courseSelect.value;
+
+    // Reset ONLY the lesson dropdown, preventing courses from disappearing!
+    lessonSelect.innerHTML = '<option value="">-- Choose --</option>';
+
+    // Filter lessons based on current selections
+    let validLessons = allLessons;
     
-    if (!year || !block) {
-        courseContainer.style.display = 'none';
-        lessonContainer.style.display = 'none';
-        courseSelect.innerHTML = '<option value="">-- Choose --</option>';
-        lessonSelect.innerHTML = '<option value="">-- Choose --</option>';
-        return;
+    if (year) {
+        validLessons = validLessons.filter(l => l.year_level == year);
+    }
+    if (block) {
+        validLessons = validLessons.filter(l => l.block == block);
+    }
+    if (courseId) {
+        validLessons = validLessons.filter(l => l.course_id == courseId);
     }
 
-    fetch(`get_courses.php?year_level=${year}&block=${block}`)
-        .then(res => res.json())
-        .then(data => {
-            courseSelect.innerHTML = '<option value="">-- Choose --</option>';
-            data.forEach(c => {
-                const opt = document.createElement('option');
-                opt.value = c.course_id;
-                opt.textContent = c.course_name;
-                courseSelect.appendChild(opt);
-            });
-            // Show course container once year and block are selected
-            courseContainer.style.display = 'block';
-            lessonContainer.style.display = 'none'; // Keep lesson hidden until course is selected
-            lessonSelect.innerHTML = '<option value="">-- Choose --</option>';
-        });
+    // Repopulate filtered lessons dynamically
+    validLessons.forEach(l => {
+        const opt = document.createElement('option');
+        opt.value = l.lesson_id;
+        opt.textContent = `${l.lesson_title} (${l.year_level}-${l.block})`;
+        lessonSelect.appendChild(opt);
+    });
 }
 
-courseSelect.addEventListener('change', function() {
-    const courseId = courseSelect.value;
-    const year = yearSelect.value;
-    const block = blockSelect.value;
+// Trigger dropdown updates anytime Year, Block, or Course changes
+yearSelect.addEventListener('change', updateLessonDropdown);
+blockSelect.addEventListener('change', updateLessonDropdown);
+courseSelect.addEventListener('change', updateLessonDropdown);
 
-    if (!courseId) {
-        lessonContainer.style.display = 'none';
-        lessonSelect.innerHTML = '<option value="">-- Choose --</option>';
-        return;
-    }
-
-    lessonSelect.innerHTML = '<option value="">-- Loading lessons --</option>';
-    // Show lesson container once course is selected
-    lessonContainer.style.display = 'block'; 
-
-    fetch(`get_lessons.php?course_id=${courseId}&year_level=${year}&block=${block}`)
-        .then(res => res.json())
-        .then(data => {
-            lessonSelect.innerHTML = '<option value="">-- Choose --</option>';
-            data.forEach(l => {
-                const opt = document.createElement('option');
-                opt.value = l.lesson_id;
-                opt.textContent = `${l.lesson_title} (${l.year_level}-${l.block})`;
-                lessonSelect.appendChild(opt);
-            });
-        });
-});
-
-yearSelect.addEventListener('change', loadCoursesAndLessons);
-blockSelect.addEventListener('change', loadCoursesAndLessons);
-
+// Run on page load just to ensure everything is in sync
+updateLessonDropdown();
 </script>
 
 <script>
