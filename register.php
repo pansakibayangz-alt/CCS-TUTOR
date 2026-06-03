@@ -32,8 +32,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['role'])) {
             $error = "Please fill in all required fields.";
         } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $error = "Please enter a valid email address.";
-      } elseif (!preg_match('/^SC-\d{2}-[A-Z]-\d{5}$/i', $school_id)) {
-            $error = "School ID must follow the format: SC-YY-X-NNNNN (e.g. SC-22-A-00129).";
+        } elseif (!preg_match('/^[a-zA-Z0-9_]{3,30}$/', $username)) {
+            $error = "Username must be 3–30 characters (letters, numbers, underscore only).";
         } elseif (strlen($password) < 6) {
             $error = "Password must be at least 6 characters.";
         } elseif ($password !== $confirm) {
@@ -76,8 +76,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['role'])) {
 
         if (!$firstname || !$surname || !$school_id || !$year_level || !$block || !$password) {
             $error = "Please fill in all required fields.";
-        } elseif (!preg_match('/^\d{4}-\d{5}$/', $school_id)) {
-            $error = "School ID must follow the format: YYYY-NNNNN (e.g. 2024-00001).";
+        } elseif (!preg_match('/^SC-\d{2}-[A-Z]-\d{5}$/i', $school_id)) {
+            $error = "School ID must follow the format: SC-YY-L-NNNNN (e.g. SC-22-A-00129).";
         } elseif ($phone_number && !preg_match('/^09\d{9}$/', $phone_number)) {
             $error = "Contact number must be in the format: 09XXXXXXXXX (11 digits).";
         } elseif (strlen($password) < 6) {
@@ -452,7 +452,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['role'])) {
                                 <div class="col-12">
                                     <label class="form-label">School ID <span class="text-danger">*</span></label>
                                     <div class="position-relative">
-                                        <input type="text" name="school_id" class="form-control" value="<?= htmlspecialchars($_POST['school_id'] ?? '') ?>" placeholder="e.g. 2024-00001">
+                                        <input type="text" name="school_id" class="form-control" value="<?= htmlspecialchars($_POST['school_id'] ?? '') ?>" placeholder="e.g. SC-22-A-00129">
                                         <i class="bi bi-credit-card-2-front input-icon"></i>
                                     </div>
                                 </div>
